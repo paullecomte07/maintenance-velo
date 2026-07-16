@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repository is currently **empty** — no code has been scaffolded yet. This file records the project's purpose and the technical decisions already agreed with the user, so that setup and implementation stay consistent across sessions. Update this file as soon as the project is scaffolded (add real build/lint/test commands, refine architecture notes based on what's actually built).
 
+- GitHub repo: https://github.com/paullecomte07/maintenance-velo (public)
+- GitHub Project board (10 build-order issues): https://github.com/users/paullecomte07/projects/1
+- Vercel and Supabase accounts: not yet created (next setup step).
+
 ## Project purpose
 
 A responsive web app for personal bike fleet maintenance tracking, with a data-analysis angle: for each bike, compare **cumulative maintenance cost** against an **estimated residual market value** (via a depreciation formula), to see whether a bike is costing more than it's worth.
