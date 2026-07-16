@@ -8,7 +8,8 @@ This repository is currently **empty** — no code has been scaffolded yet. This
 
 - GitHub repo: https://github.com/paullecomte07/maintenance-velo (public)
 - GitHub Project board (10 build-order issues): https://github.com/users/paullecomte07/projects/1
-- Vercel and Supabase accounts: not yet created (next setup step).
+- Vercel account: created, linked via GitHub OAuth.
+- Supabase account + project: created (project name `maintenance-velo`). DB password stored locally in `.env.local` (gitignored) — not yet retrieved into a full `.env.local` with API URL/anon key, that happens when the code is scaffolded (issue #1/#2).
 
 ## Project purpose
 
