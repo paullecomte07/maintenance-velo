@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { ANALYSIS_MODEL, createAnthropicClient } from "@/lib/anthropic";
+import { ANALYSIS_SYSTEM_PROMPT } from "@/lib/prompts/analysis-prompt";
 import {
   BIKE_CATEGORIES,
   BIKE_SYSTEMS,
@@ -144,13 +145,6 @@ async function mockAnalysis() {
     "- Contrôler les freins avant/arrière, sujets à des remises à neuf rapprochées.",
   ].join("\n");
 }
-
-const ANALYSIS_SYSTEM_PROMPT = `Tu es un mécanicien vélo professionnel expérimenté. On te fournit l'historique d'entretien complet d'un vélo (systèmes concernés, types d'intervention, causes). Analyse-le et donne un avis concret en français, structuré en deux parties avec ces titres exacts :
-
-Ce qui interroge
-Ce qu'il faudra probablement vérifier bientôt
-
-Sois direct et concret : cite les systèmes ou pièces concernés et les dates si pertinent (usures prématurées répétées, pièces qui reviennent souvent, systèmes qui posent problème, entretiens préventifs à anticiper vu les fréquences observées). Pas de généralités, pas de disclaimer. Reste concis (200 mots maximum). Utilise des tirets pour les listes, pas de gras ni d'étoiles.`;
 
 export async function generateAnalysis(
   bikeId: string
