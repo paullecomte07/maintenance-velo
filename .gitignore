@@ -50,3 +50,6 @@ supabase/.temp
 # Personal data files (not for the public repo)
 *.xlsx
 *.xls
+
+.vercel
+.env*

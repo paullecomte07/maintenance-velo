@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DeleteBikeButton } from "@/components/delete-bike-button";
+import { MaintenanceAnalysis } from "@/components/maintenance-analysis";
 import { MaintenanceSection } from "@/components/maintenance-section";
 import { createClient } from "@/lib/supabase/server";
 import { BIKE_CATEGORIES } from "@/lib/reference-data";
@@ -113,6 +114,13 @@ export default async function BikePage({
       </Card>
 
       <MaintenanceSection bikeId={bike.id} events={events ?? []} />
+
+      <MaintenanceAnalysis
+        bikeId={bike.id}
+        hasEvents={(events ?? []).length > 0}
+        initialAnalysis={bike.ai_analysis}
+        initialGeneratedAt={bike.ai_analysis_generated_at}
+      />
     </div>
   );
 }

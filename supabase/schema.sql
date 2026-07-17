@@ -43,6 +43,8 @@ create table bikes (
   spec_sheet_url text,
   depreciation_rate numeric(5, 2) not null default 15 check (depreciation_rate between 0 and 100),
   photo_url text,
+  ai_analysis text,
+  ai_analysis_generated_at timestamptz,
   created_at timestamptz not null default now()
 );
 

@@ -18,6 +18,8 @@ export type Bike = {
   spec_sheet_url: string | null;
   depreciation_rate: number;
   photo_url: string | null;
+  ai_analysis: string | null;
+  ai_analysis_generated_at: string | null;
   created_at: string;
 };
 
