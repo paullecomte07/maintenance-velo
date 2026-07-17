@@ -31,6 +31,11 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
     locale: "fr-FR",
+    // Contourne la protection SSO Vercel sur les URLs de déploiement non
+    // aliasées (candidate en CI) ; ignoré/sans effet sur le domaine de prod.
+    extraHTTPHeaders: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
+      : undefined,
   },
   projects: [
     {
