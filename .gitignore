@@ -46,3 +46,7 @@ supabase/.temp
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Personal data files (not for the public repo)
+*.xlsx
+*.xls
