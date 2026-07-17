@@ -168,6 +168,7 @@ export async function generateAnalysis(
       return { error: "L'analyse n'a renvoyé aucun contenu.", success: false };
     }
   } catch (e) {
+    console.error("generateAnalysis: appel Anthropic échoué", e);
     const isConfigError =
       e instanceof Error && e.message.includes("ANTHROPIC_API_KEY");
     return {
@@ -185,6 +186,7 @@ export async function generateAnalysis(
     .eq("id", bikeId);
 
   if (updateError) {
+    console.error("generateAnalysis: échec de l'enregistrement", updateError);
     return {
       error: "L'analyse a réussi mais n'a pas pu être enregistrée.",
       success: false,
