@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DeleteBikeButton } from "@/components/delete-bike-button";
+import { MaintenanceSection } from "@/components/maintenance-section";
 import { createClient } from "@/lib/supabase/server";
 import { BIKE_CATEGORIES } from "@/lib/reference-data";
-import type { Bike } from "@/lib/types";
+import type { Bike, MaintenanceEvent } from "@/lib/types";
 
 function formatDate(date: string | null) {
   if (!date) return "—";
@@ -41,6 +42,14 @@ export default async function BikePage({
     .single<Bike>();
 
   if (!bike) notFound();
+
+  const { data: events } = await supabase
+    .from("maintenance_events")
+    .select("*")
+    .eq("bike_id", bike.id)
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .returns<MaintenanceEvent[]>();
 
   const deleteAction = deleteBike.bind(null, bike.id);
 
@@ -102,6 +111,8 @@ export default async function BikePage({
           </dl>
         </CardContent>
       </Card>
+
+      <MaintenanceSection bikeId={bike.id} events={events ?? []} />
     </div>
   );
 }
