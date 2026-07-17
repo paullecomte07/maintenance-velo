@@ -1,0 +1,59 @@
+name: Tester puis mettre en ligne
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Installer Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Récupérer la configuration du projet Vercel
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Construire le site (config production)
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Déployer une version candidate (URL temporaire, pas la prod)
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Installer Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Lancer les tests E2E sur la version candidate
+        env:
+          E2E_BASE_URL: ${{ steps.deploy.outputs.url }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+        run: npx playwright test
+
+      - name: Publier le rapport de tests si échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Mettre la version candidate en production
+        if: success()
+        run: vercel promote ${{ steps.deploy.outputs.url }} --token=${{ secrets.VERCEL_TOKEN }} --yes
