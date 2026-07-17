@@ -115,6 +115,36 @@ function formatEventsForPrompt(bike: Bike, events: MaintenanceEvent[]) {
   ].join("\n");
 }
 
+async function callAnthropic(bike: Bike, events: MaintenanceEvent[]) {
+  const anthropic = createAnthropicClient();
+  const message = await anthropic.messages.create({
+    model: ANALYSIS_MODEL,
+    max_tokens: 1024,
+    system: ANALYSIS_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: formatEventsForPrompt(bike, events) }],
+  });
+  // Le modèle peut renvoyer un bloc "thinking" avant le bloc "text" :
+  // on cherche le premier bloc texte quelle que soit sa position.
+  const textBlock = message.content.find((b) => b.type === "text");
+  return textBlock?.type === "text" ? textBlock.text : "";
+}
+
+async function mockAnalysis() {
+  // Simule la latence et le format réels, sans appeler l'API (tests gratuits).
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  return [
+    "[SIMULATION - ANTHROPIC_MOCK activé, aucun appel API réel]",
+    "",
+    "Ce qui interroge",
+    "- La transmission revient très souvent (chaîne, cassette, dérailleur) sur une période courte.",
+    "- Plusieurs usures classées « prématurées » sur le même système en peu de temps.",
+    "",
+    "Ce qu'il faudra probablement vérifier bientôt",
+    "- Vérifier l'alignement et la tension de la chaîne pour éviter une usure accélérée récurrente.",
+    "- Contrôler les freins avant/arrière, sujets à des remises à neuf rapprochées.",
+  ].join("\n");
+}
+
 const ANALYSIS_SYSTEM_PROMPT = `Tu es un mécanicien vélo professionnel expérimenté. On te fournit l'historique d'entretien complet d'un vélo (systèmes concernés, types d'intervention, causes). Analyse-le et donne un avis concret en français, structuré en deux parties avec ces titres exacts :
 
 Ce qui interroge
@@ -153,17 +183,9 @@ export async function generateAnalysis(
 
   let analysisText: string;
   try {
-    const anthropic = createAnthropicClient();
-    const message = await anthropic.messages.create({
-      model: ANALYSIS_MODEL,
-      max_tokens: 1024,
-      system: ANALYSIS_SYSTEM_PROMPT,
-      messages: [
-        { role: "user", content: formatEventsForPrompt(bike, events) },
-      ],
-    });
-    const textBlock = message.content.find((b) => b.type === "text");
-    analysisText = textBlock?.type === "text" ? textBlock.text : "";
+    analysisText = process.env.ANTHROPIC_MOCK === "true"
+      ? await mockAnalysis()
+      : await callAnthropic(bike, events);
     if (!analysisText) {
       return { error: "L'analyse n'a renvoyé aucun contenu.", success: false };
     }
