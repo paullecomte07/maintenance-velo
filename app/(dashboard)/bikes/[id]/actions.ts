@@ -162,8 +162,8 @@ export async function generateAnalysis(
         { role: "user", content: formatEventsForPrompt(bike, events) },
       ],
     });
-    const block = message.content[0];
-    analysisText = block.type === "text" ? block.text : "";
+    const textBlock = message.content.find((b) => b.type === "text");
+    analysisText = textBlock?.type === "text" ? textBlock.text : "";
     if (!analysisText) {
       return { error: "L'analyse n'a renvoyé aucun contenu.", success: false };
     }
