@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ export function DeleteBikeButton({
   onDelete: () => Promise<void>;
 }) {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   return (
     <Dialog>
@@ -46,6 +48,8 @@ export function DeleteBikeButton({
               startTransition(async () => {
                 try {
                   await onDelete();
+                  toast.success(`« ${bikeName} » a été supprimé.`);
+                  router.push("/bikes");
                 } catch {
                   toast.error("La suppression du vélo a échoué.");
                 }

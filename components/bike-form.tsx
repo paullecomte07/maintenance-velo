@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,8 +39,10 @@ export function BikeForm({
   action: (prevState: BikeFormState, formData: FormData) => Promise<BikeFormState>;
   bike?: Bike;
 }) {
+  const router = useRouter();
   const [state, formAction] = useFormState<BikeFormState, FormData>(action, {
     error: null,
+    success: false,
   });
   const [category, setCategory] = useState<BikeCategory>(
     bike?.category ?? "vtt"
@@ -47,6 +51,13 @@ export function BikeForm({
     String(bike?.depreciation_rate ?? DEFAULT_DEPRECIATION_RATES.vtt)
   );
   const [rateTouched, setRateTouched] = useState(Boolean(bike));
+
+  useEffect(() => {
+    if (state.success) {
+      toast.success(bike ? "Vélo modifié." : "Vélo ajouté.");
+      router.push(bike ? `/bikes/${bike.id}` : "/bikes");
+    }
+  }, [state, bike, router]);
 
   function onCategoryChange(value: string) {
     const cat = value as BikeCategory;
@@ -65,7 +76,7 @@ export function BikeForm({
           name="name"
           required
           defaultValue={bike?.name}
-          placeholder="Mon VTT"
+          placeholder="Ex : VTT du quotidien"
         />
       </div>
 
@@ -76,7 +87,7 @@ export function BikeForm({
             id="brand"
             name="brand"
             defaultValue={bike?.brand ?? ""}
-            placeholder="Bergamont"
+            placeholder="Ex : Trek"
           />
         </div>
         <div className="space-y-2">
@@ -85,7 +96,7 @@ export function BikeForm({
             id="model"
             name="model"
             defaultValue={bike?.model ?? ""}
-            placeholder="Revox 4.0 (2015)"
+            placeholder="Ex : Marlin 7"
           />
         </div>
       </div>
@@ -173,7 +184,7 @@ export function BikeForm({
             name="spec_sheet_url"
             type="url"
             defaultValue={bike?.spec_sheet_url ?? ""}
-            placeholder="https://…"
+            placeholder="Ex : https://marque.com/fiche-technique"
           />
         </div>
       </div>

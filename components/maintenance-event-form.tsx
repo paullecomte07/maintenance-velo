@@ -16,10 +16,14 @@ import {
 } from "@/components/ui/select";
 import {
   BIKE_SYSTEMS,
+  CAUSE_TYPE_DESCRIPTIONS,
   CAUSE_TYPES,
+  INTERVENTION_TYPE_DESCRIPTIONS,
   INTERVENTION_TYPES,
   SYSTEM_PARTS,
   type BikeSystem,
+  type CauseType,
+  type InterventionType,
 } from "@/lib/reference-data";
 import type { MaintenanceEvent } from "@/lib/types";
 import type { EventFormState } from "@/app/(dashboard)/bikes/[id]/actions";
@@ -51,6 +55,12 @@ export function MaintenanceEventForm({
   });
   const [system, setSystem] = useState<BikeSystem>(
     event?.system ?? "transmission"
+  );
+  const [interventionType, setInterventionType] = useState<InterventionType>(
+    event?.intervention_type ?? "entretien"
+  );
+  const [causeType, setCauseType] = useState<CauseType>(
+    event?.cause_type ?? "usure_normale"
   );
   const datalistId = useId();
 
@@ -106,7 +116,7 @@ export function MaintenanceEventForm({
           name="title"
           required
           defaultValue={event?.title}
-          placeholder="Cassette Shimano V9"
+          placeholder="Ex : Plaquettes de frein avant"
           list={datalistId}
         />
         <datalist id={datalistId}>
@@ -124,7 +134,8 @@ export function MaintenanceEventForm({
           <Label>Type d&apos;intervention *</Label>
           <Select
             name="intervention_type"
-            defaultValue={event?.intervention_type ?? "entretien"}
+            value={interventionType}
+            onValueChange={(v) => setInterventionType(v as InterventionType)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -137,12 +148,16 @@ export function MaintenanceEventForm({
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">
+            {INTERVENTION_TYPE_DESCRIPTIONS[interventionType]}
+          </p>
         </div>
         <div className="space-y-2">
           <Label>Type de cause *</Label>
           <Select
             name="cause_type"
-            defaultValue={event?.cause_type ?? "usure_normale"}
+            value={causeType}
+            onValueChange={(v) => setCauseType(v as CauseType)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -155,6 +170,9 @@ export function MaintenanceEventForm({
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">
+            {CAUSE_TYPE_DESCRIPTIONS[causeType]}
+          </p>
         </div>
       </div>
 

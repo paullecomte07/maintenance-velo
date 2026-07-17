@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-export type BikeFormState = { error: string | null };
+export type BikeFormState = { error: string | null; success: boolean };
 
 function bikePayload(formData: FormData) {
   const optional = (name: string) => {
@@ -41,11 +41,11 @@ export async function createBike(
     .insert({ ...bikePayload(formData), user_id: user.id });
 
   if (error) {
-    return { error: "L'enregistrement du vélo a échoué. Réessaie." };
+    return { error: "L'enregistrement du vélo a échoué. Réessaie.", success: false };
   }
 
   revalidatePath("/bikes");
-  redirect("/bikes");
+  return { error: null, success: true };
 }
 
 export async function updateBike(
@@ -61,12 +61,12 @@ export async function updateBike(
     .eq("id", bikeId);
 
   if (error) {
-    return { error: "La modification du vélo a échoué. Réessaie." };
+    return { error: "La modification du vélo a échoué. Réessaie.", success: false };
   }
 
   revalidatePath("/bikes");
   revalidatePath(`/bikes/${bikeId}`);
-  redirect(`/bikes/${bikeId}`);
+  return { error: null, success: true };
 }
 
 export async function deleteBike(bikeId: string) {
@@ -79,5 +79,4 @@ export async function deleteBike(bikeId: string) {
   }
 
   revalidatePath("/bikes");
-  redirect("/bikes");
 }
