@@ -1,5 +1,27 @@
 import { expect, test } from "@playwright/test";
 
+// Tests E2E — US#4 (Vélos) & US#5 (Cahier d'intervention)
+// Scénario: Créer un vélo de test [US#4]
+//   Étant donné que je suis connecté
+//   Quand j'ajoute un vélo avec un nom et un prix d'achat
+//   Alors le vélo apparaît dans ma liste
+// Scénario: Ajouter une intervention au cahier [US#5]
+//   Étant donné qu'un vélo existe
+//   Quand j'ajoute une intervention avec un titre
+//   Alors elle apparaît dans le cahier d'intervention
+// Scénario: Modifier l'intervention [US#5]
+//   Étant donné qu'une intervention existe
+//   Quand je modifie son titre
+//   Alors le nouveau titre apparaît dans le cahier
+// Scénario: Supprimer l'intervention [US#5]
+//   Étant donné qu'une intervention existe
+//   Quand je la supprime et confirme
+//   Alors le cahier n'affiche plus aucune intervention
+// Scénario: Supprimer le vélo de test (nettoyage) [US#4]
+//   Étant donné qu'un vélo de test existe
+//   Quand je le supprime et confirme
+//   Alors il n'apparaît plus dans ma liste
+//
 // Parcours complet : création d'un vélo de test, gestion du cahier
 // d'intervention, puis nettoyage (suppression du vélo). Les données créées
 // sont préfixées [TEST] et supprimées en fin de parcours — les données
@@ -11,7 +33,7 @@ const bikeName = `[TEST] Vélo Playwright ${Date.now()}`;
 const eventTitle = "[TEST] Plaquettes de frein";
 const eventTitleEdited = "[TEST] Plaquettes de frein avant";
 
-test("créer un vélo de test", async ({ page }) => {
+test("US#4 – Créer un vélo de test", async ({ page }) => {
   await page.goto("/bikes");
   await page.getByRole("link", { name: "Ajouter un vélo" }).click();
   await expect(page).toHaveURL(/\/bikes\/new/);
@@ -24,7 +46,7 @@ test("créer un vélo de test", async ({ page }) => {
   await expect(page.getByText(bikeName)).toBeVisible();
 });
 
-test("ajouter une intervention au cahier", async ({ page }) => {
+test("US#5 – Ajouter une intervention au cahier", async ({ page }) => {
   await page.goto("/bikes");
   await page.getByText(bikeName).click();
   await expect(page).toHaveURL(/\/bikes\/[0-9a-f-]+$/);
@@ -39,7 +61,7 @@ test("ajouter une intervention au cahier", async ({ page }) => {
   ).toBeVisible({ timeout: 15000 });
 });
 
-test("modifier l'intervention", async ({ page }) => {
+test("US#5 – Modifier l'intervention", async ({ page }) => {
   await page.goto("/bikes");
   await page.getByText(bikeName).click();
 
@@ -57,7 +79,7 @@ test("modifier l'intervention", async ({ page }) => {
   ).toBeVisible({ timeout: 15000 });
 });
 
-test("supprimer l'intervention", async ({ page }) => {
+test("US#5 – Supprimer l'intervention", async ({ page }) => {
   await page.goto("/bikes");
   await page.getByText(bikeName).click();
 
@@ -76,7 +98,7 @@ test("supprimer l'intervention", async ({ page }) => {
   ).toBeVisible({ timeout: 15000 });
 });
 
-test("supprimer le vélo de test (nettoyage)", async ({ page }) => {
+test("US#4 – Supprimer le vélo de test (nettoyage)", async ({ page }) => {
   await page.goto("/bikes");
   await page.getByText(bikeName).click();
   await expect(page).toHaveURL(/\/bikes\/[0-9a-f-]+$/);

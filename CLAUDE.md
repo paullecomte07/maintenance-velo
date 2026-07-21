@@ -66,6 +66,15 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
+## Workflow : User Stories & tests E2E
+
+Chaque fonctionnalité passe par un ticket GitHub au format **User Story** (template `.github/ISSUE_TEMPLATE/user-story.md`) : Contexte / Récit utilisateur / Critères d'acceptation / **Tests E2E (Gherkin)**.
+
+- Le ticket est créé **avant** de développer.
+- Les `Scénario:` Gherkin du ticket sont traduits en tests **Playwright classiques** (`tests/e2e/`), recopiés en commentaire d'en-tête du fichier de test (le nom du `Scénario:` = le titre du test).
+- Chaque test est titré **`US#<n° du ticket> – <nom du scénario>`**. Le reporter `tests/e2e/reporters/us-summary-reporter.ts` en tire un tableau « Couverture des tests E2E par US » (US → scénario → ✓/✗, avec lien vers le ticket) affiché dans le résumé du run GitHub Actions.
+- La CI ne met en ligne qu'une version dont **tous les tests passent** (`.github/workflows/deploy.yml`).
+
 ## Project status
 
 This repository is currently **empty** — no code has been scaffolded yet. This file records the project's purpose and the technical decisions already agreed with the user, so that setup and implementation stay consistent across sessions. Update this file as soon as the project is scaffolded (add real build/lint/test commands, refine architecture notes based on what's actually built).

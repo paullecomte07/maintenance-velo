@@ -26,7 +26,7 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   workers: 1,
-  reporter: [["list"]],
+  reporter: [["list"], ["./tests/e2e/reporters/us-summary-reporter.ts"]],
   use: {
     baseURL,
     trace: "retain-on-failure",
