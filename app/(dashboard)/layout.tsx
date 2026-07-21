@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { logout } from "@/app/(auth)/actions";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,7 +29,6 @@ export default async function DashboardLayout({
           <span className="hidden text-sm text-muted-foreground sm:inline">
             {user.email}
           </span>
-          <ThemeToggle />
           <form action={logout}>
             <Button variant="outline" size="sm" type="submit">
               Déconnexion
