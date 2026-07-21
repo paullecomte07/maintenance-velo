@@ -42,7 +42,7 @@ class USSummaryReporter implements Reporter {
   onEnd() {
     if (this.rows.size === 0) return;
 
-    const rows = [...this.rows.values()].sort(
+    const rows = Array.from(this.rows.values()).sort(
       (a, b) => a.us - b.us || a.order - b.order
     );
 
