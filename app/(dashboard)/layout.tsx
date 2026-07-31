@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { logout } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
+import { VersionFooter } from "@/components/version-footer";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
@@ -39,6 +40,7 @@ export default async function DashboardLayout({
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">
         {children}
       </main>
+      <VersionFooter />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { VersionFooter } from "@/components/version-footer";
+
 export default function AuthLayout({
   children,
 }: {
@@ -11,6 +13,7 @@ export default function AuthLayout({
       <main className="flex flex-1 items-center justify-center px-4 py-8">
         {children}
       </main>
+      <VersionFooter />
     </div>
   );
 }

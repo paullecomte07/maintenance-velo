@@ -75,6 +75,16 @@ Chaque fonctionnalité passe par un ticket GitHub au format **User Story** (temp
 - Chaque test est titré **`US#<n° du ticket> – <nom du scénario>`**. Le reporter `tests/e2e/reporters/us-summary-reporter.ts` en tire un tableau « Couverture des tests E2E par US » (US → scénario → ✓/✗, avec lien vers le ticket) affiché dans le résumé du run GitHub Actions.
 - La CI ne met en ligne qu'une version dont **tous les tests passent** (`.github/workflows/deploy.yml`).
 
+## Versioning
+
+Version sémantique (SemVer) automatisée via **Conventional Commits** + `semantic-release`.
+
+- Les titres de PR (= message du commit de squash-merge sur `main`) doivent suivre le format `type: description` (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `perf:`...). Vérifié en CI par `.github/workflows/pr-title-lint.yml`.
+- `fix` → patch, `feat` → minor, `BREAKING CHANGE` dans le corps du commit → major.
+- À chaque déploiement réussi sur `main`, `.github/workflows/deploy.yml` exécute `npx semantic-release` (config `.releaserc.json`) : détermine le bump, met à jour `package.json` + `CHANGELOG.md`, crée le tag git et la GitHub Release, repousse le commit `chore(release): ...` avec `[skip ci]`.
+- Le tag initial `v0.1.0` doit exister avant le premier run pour que `semantic-release` compte les versions à partir de l'état actuel plutôt que de tout l'historique.
+- La version affichée dans l'app (`components/version-footer.tsx`) est lue directement depuis `package.json` (source de vérité, mise à jour par `semantic-release`) et pointe vers la GitHub Release correspondante.
+
 ## Project status
 
 This repository is currently **empty** — no code has been scaffolded yet. This file records the project's purpose and the technical decisions already agreed with the user, so that setup and implementation stay consistent across sessions. Update this file as soon as the project is scaffolded (add real build/lint/test commands, refine architecture notes based on what's actually built).
