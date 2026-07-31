@@ -18,14 +18,18 @@ import {
   BIKE_SYSTEMS,
   CAUSE_TYPE_DESCRIPTIONS,
   CAUSE_TYPES,
-  INTERVENTION_TYPE_DESCRIPTIONS,
-  INTERVENTION_TYPES,
+  NATURE_CHANGEMENT_DESCRIPTIONS,
+  NATURE_CHANGEMENT_TYPES,
   SYSTEM_PARTS,
   type BikeSystem,
   type CauseType,
-  type InterventionType,
+  type NatureChangementType,
 } from "@/lib/reference-data";
-import type { MaintenanceEvent } from "@/lib/types";
+import {
+  NEW_INTERVENTION,
+  type Intervention,
+  type MaintenanceEvent,
+} from "@/lib/types";
 import type { EventFormState } from "@/app/(dashboard)/bikes/[id]/actions";
 
 function SubmitButton({ label }: { label: string }) {
@@ -37,9 +41,15 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString("fr-FR");
+}
+
 export function MaintenanceEventForm({
   action,
   event,
+  interventions,
+  fixedInterventionId,
   onSuccess,
 }: {
   action: (
@@ -47,6 +57,8 @@ export function MaintenanceEventForm({
     formData: FormData
   ) => Promise<EventFormState>;
   event?: MaintenanceEvent;
+  interventions: Intervention[];
+  fixedInterventionId?: string;
   onSuccess: () => void;
 }) {
   const [state, formAction] = useFormState<EventFormState, FormData>(action, {
@@ -56,19 +68,19 @@ export function MaintenanceEventForm({
   const [system, setSystem] = useState<BikeSystem>(
     event?.system ?? "transmission"
   );
-  const [interventionType, setInterventionType] = useState<InterventionType>(
-    event?.intervention_type ?? "entretien"
-  );
+  const [natureChangement, setNatureChangement] =
+    useState<NatureChangementType>(event?.nature_changement ?? "entretien");
   const [causeType, setCauseType] = useState<CauseType>(
     event?.cause_type ?? "usure_normale"
+  );
+  const [interventionId, setInterventionId] = useState(
+    event?.intervention_id ?? ""
   );
   const datalistId = useId();
 
   useEffect(() => {
     if (state.success) {
-      toast.success(
-        event ? "Intervention modifiée." : "Intervention ajoutée."
-      );
+      toast.success(event ? "Changement modifié." : "Changement ajouté.");
       onSuccess();
     }
   }, [state, event, onSuccess]);
@@ -77,6 +89,69 @@ export function MaintenanceEventForm({
 
   return (
     <form action={formAction} className="space-y-4">
+      {fixedInterventionId ? (
+        <input
+          type="hidden"
+          name="intervention_id"
+          value={fixedInterventionId}
+        />
+      ) : (
+        <div className="space-y-2">
+          <Label>Intervention *</Label>
+          <Select
+            name="intervention_id"
+            value={interventionId}
+            onValueChange={setInterventionId}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionner une intervention" />
+            </SelectTrigger>
+            <SelectContent>
+              {interventions.map((intervention) => (
+                <SelectItem key={intervention.id} value={intervention.id}>
+                  {intervention.title} — {formatDate(intervention.date)}
+                </SelectItem>
+              ))}
+              <SelectItem value={NEW_INTERVENTION}>
+                + Créer une nouvelle intervention
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Chaque changement de pièce appartient à une intervention (la session
+            au cours de laquelle il a été réalisé).
+          </p>
+        </div>
+      )}
+
+      {interventionId === NEW_INTERVENTION && (
+        <div className="grid gap-4 rounded-lg border p-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="new_intervention_title">
+              Nom de la nouvelle intervention *
+            </Label>
+            <Input
+              id="new_intervention_title"
+              name="new_intervention_title"
+              required
+              placeholder="Ex : Révision de printemps"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new_intervention_date">
+              Date de l&apos;intervention *
+            </Label>
+            <Input
+              id="new_intervention_date"
+              name="new_intervention_date"
+              type="date"
+              required
+              defaultValue={today}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="date">Date *</Label>
@@ -131,17 +206,17 @@ export function MaintenanceEventForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Type d&apos;intervention *</Label>
+          <Label>Nature du changement *</Label>
           <Select
-            name="intervention_type"
-            value={interventionType}
-            onValueChange={(v) => setInterventionType(v as InterventionType)}
+            name="nature_changement"
+            value={natureChangement}
+            onValueChange={(v) => setNatureChangement(v as NatureChangementType)}
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(INTERVENTION_TYPES).map(([value, label]) => (
+              {Object.entries(NATURE_CHANGEMENT_TYPES).map(([value, label]) => (
                 <SelectItem key={value} value={value}>
                   {label}
                 </SelectItem>
@@ -149,7 +224,7 @@ export function MaintenanceEventForm({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            {INTERVENTION_TYPE_DESCRIPTIONS[interventionType]}
+            {NATURE_CHANGEMENT_DESCRIPTIONS[natureChangement]}
           </p>
         </div>
         <div className="space-y-2">

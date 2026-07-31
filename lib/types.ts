@@ -2,7 +2,7 @@ import type {
   BikeCategory,
   BikeSystem,
   CauseType,
-  InterventionType,
+  NatureChangementType,
 } from "@/lib/reference-data";
 
 export type Bike = {
@@ -23,13 +23,26 @@ export type Bike = {
   created_at: string;
 };
 
+// Valeur sentinelle du select « intervention » : crée une intervention à la volée.
+export const NEW_INTERVENTION = "__new__";
+
+export type Intervention = {
+  id: string;
+  bike_id: string;
+  title: string;
+  date: string;
+  note: string | null;
+  created_at: string;
+};
+
 export type MaintenanceEvent = {
   id: string;
   bike_id: string;
+  intervention_id: string | null;
   date: string;
   title: string;
   system: BikeSystem;
-  intervention_type: InterventionType;
+  nature_changement: NatureChangementType;
   cause_type: CauseType;
   cost: number | null;
   created_at: string;

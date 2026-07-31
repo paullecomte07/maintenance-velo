@@ -118,13 +118,15 @@ A responsive web app for personal bike fleet maintenance tracking, with a data-a
 ## Planned data model (Supabase Postgres)
 
 - `bikes`: `id`, `user_id` (FK auth.users, RLS-scoped), `name`, `brand`, `model`, `category` (enum: `route`/`vtt`/`electrique`/`urbain`, default `vtt`), `purchase_date`, `purchase_price` (manual entry, required for depreciation), `mileage_km` (manual entry), `spec_sheet_url` (nullable), `depreciation_rate` (annual %, defaulted by category, editable), `photo_url` (nullable), `created_at`.
-- `maintenance_events`: `id`, `bike_id` (FK bikes), `date`, `title` (free text, e.g. "Cassette Shimano"), `system` (enum, fixed reference list — see below), `intervention_type` (enum: `inspection`/`entretien`/`reparation`/`remise_a_neuf`), `cause_type` (enum: `usure_prematuree`/`usure_normale`/`accident`), `cost` (numeric, single amount for the whole event), `created_at`.
-- RLS enabled on both tables — a user only sees their own bikes and related maintenance events.
+- `interventions`: `id`, `bike_id` (FK bikes), `title` (free text, e.g. "Révision de printemps"), `date`, `note` (nullable), `created_at`. Une intervention est une **session** qui regroupe plusieurs changements de pièces. Pas de coût propre : le coût affiché est la somme des `maintenance_events` rattachés.
+- `maintenance_events` (cahier de changement de pièces) : `id`, `bike_id` (FK bikes), `intervention_id` (FK interventions), `date`, `title` (free text, e.g. "Cassette Shimano"), `system` (enum, fixed reference list — see below), `nature_changement` (enum: `inspection`/`entretien`/`reparation`/`remise_a_neuf`), `cause_type` (enum: `usure_prematuree`/`usure_normale`/`accident`), `cost` (numeric, single amount for the whole event), `created_at`.
+- RLS enabled on the three tables — a user only sees their own bikes and related interventions/maintenance events.
+- `intervention_id` est **nullable en base pour l'instant** : les changements enregistrés avant l'introduction des interventions n'en ont pas encore. La migration de l'historique (bascule vers une intervention « Historique initial », puis passage en `not null`) reste à faire.
 
 ### Fixed reference lists (from the user's existing tracking spreadsheet)
 
 - `system` ("Nature"): Cadre, Direction, Transmission, Roue avant, Roue arrière, Système de freinage avant, Système de freinage arrière, Assise, Équipement. Each system has a documented list of specific parts ("organes"), used as a naming reference/autocomplete helper for the event's free-text `title` — not a separate DB column in v1.
-- `intervention_type`: Inspection (vérification de l'état des pièces d'usure), Entretien (changement de petites pièces d'usure, petits bricolages), Réparation (changement d'une pièce, < 50% de la valeur du module), Remise à neuf (changement de tout le module / restauration totale).
+- `nature_changement` (anciennement `intervention_type`, renommé pour ne pas entrer en collision avec la table `interventions`) : Inspection (vérification de l'état des pièces d'usure), Entretien (changement de petites pièces d'usure, petits bricolages), Réparation (changement d'une pièce, < 50% de la valeur du module), Remise à neuf (changement de tout le module / restauration totale).
 - `cause_type`: Usure prématurée (usure anormale), Usure normale (durée de vie respectée), Accident (casse due à un accident d'utilisation).
 
 These are implemented as Postgres enums (fixed, code-level extendable) rather than editable DB tables — single-user app, low churn expected.
@@ -139,7 +141,8 @@ Exponential decay based on age: `estimated_value = purchase_price * (1 - depreci
 app/
   (auth)/login/page.tsx, signup/page.tsx
   (dashboard)/bikes/page.tsx              # bike list
-  (dashboard)/bikes/[id]/page.tsx         # bike detail + maintenance history
+  (dashboard)/bikes/[id]/page.tsx         # bike detail + cahier de changement de pièces
+  (dashboard)/bikes/[id]/interventions/   # liste des interventions + fiche d'une intervention
   (dashboard)/bikes/[id]/import/page.tsx  # CSV import for this bike
   (dashboard)/analytics/page.tsx          # cost vs. value dashboard
   layout.tsx, middleware.ts               # route protection
@@ -148,7 +151,7 @@ lib/
   supabase/client.ts, server.ts
   depreciation.ts                         # depreciation formula
   csv-import.ts                           # CSV parsing + column mapping
-  reference-data.ts                       # fixed lists: system/organes, intervention_type, cause_type
+  reference-data.ts                       # fixed lists: system/organes, nature_changement, cause_type
 supabase/
   schema.sql                              # tables + RLS policies
 .env.local.example

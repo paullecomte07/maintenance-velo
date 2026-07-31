@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -36,9 +37,9 @@ import {
 import {
   BIKE_SYSTEMS,
   CAUSE_TYPES,
-  INTERVENTION_TYPES,
+  NATURE_CHANGEMENT_TYPES,
 } from "@/lib/reference-data";
-import type { MaintenanceEvent } from "@/lib/types";
+import type { Intervention, MaintenanceEvent } from "@/lib/types";
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("fr-FR");
@@ -69,9 +70,9 @@ function DeleteEventDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Supprimer cette intervention ?</DialogTitle>
+          <DialogTitle>Supprimer ce changement de pièce ?</DialogTitle>
           <DialogDescription>
-            « {event.title} » du {formatDate(event.date)} sera supprimée
+            « {event.title} » du {formatDate(event.date)} sera supprimé
             définitivement.
           </DialogDescription>
         </DialogHeader>
@@ -83,7 +84,7 @@ function DeleteEventDialog({
               startTransition(async () => {
                 try {
                   await deleteEvent(event.id, bikeId);
-                  toast.success("Intervention supprimée.");
+                  toast.success("Changement supprimé.");
                   onOpenChange(false);
                 } catch {
                   toast.error("La suppression a échoué.");
@@ -102,9 +103,13 @@ function DeleteEventDialog({
 export function MaintenanceSection({
   bikeId,
   events,
+  interventions,
+  fixedInterventionId,
 }: {
   bikeId: string;
   events: MaintenanceEvent[];
+  interventions: Intervention[];
+  fixedInterventionId?: string;
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<MaintenanceEvent | null>(null);
@@ -113,19 +118,42 @@ export function MaintenanceSection({
   );
 
   const totalCost = events.reduce((sum, e) => sum + (e.cost ?? 0), 0);
+  const interventionById = new Map(interventions.map((i) => [i.id, i]));
+
+  // Sur la fiche d'une intervention, la colonne serait la même sur chaque ligne.
+  const showInterventionColumn = !fixedInterventionId;
+
+  function interventionCell(event: MaintenanceEvent) {
+    const intervention = event.intervention_id
+      ? interventionById.get(event.intervention_id)
+      : undefined;
+
+    if (!intervention) return "—";
+
+    return (
+      <Link
+        href={`/bikes/${bikeId}/interventions/${intervention.id}`}
+        className="underline underline-offset-4"
+      >
+        {intervention.title}
+      </Link>
+    );
+  }
 
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-lg">Cahier d&apos;intervention</CardTitle>
+        <CardTitle className="text-lg">
+          Cahier de changement de pièces
+        </CardTitle>
         <Button size="sm" onClick={() => setAddOpen(true)}>
-          Ajouter une intervention
+          Ajouter un changement
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         {events.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            Aucune intervention enregistrée pour ce vélo.
+            Aucun changement de pièce enregistré.
           </p>
         ) : (
           <>
@@ -136,8 +164,11 @@ export function MaintenanceSection({
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Titre</TableHead>
+                    {showInterventionColumn && (
+                      <TableHead>Intervention</TableHead>
+                    )}
                     <TableHead>Système</TableHead>
-                    <TableHead>Intervention</TableHead>
+                    <TableHead>Nature</TableHead>
                     <TableHead>Cause</TableHead>
                     <TableHead className="text-right">Coût</TableHead>
                     <TableHead />
@@ -152,9 +183,12 @@ export function MaintenanceSection({
                       <TableCell className="font-medium">
                         {event.title}
                       </TableCell>
+                      {showInterventionColumn && (
+                        <TableCell>{interventionCell(event)}</TableCell>
+                      )}
                       <TableCell>{BIKE_SYSTEMS[event.system]}</TableCell>
                       <TableCell>
-                        {INTERVENTION_TYPES[event.intervention_type]}
+                        {NATURE_CHANGEMENT_TYPES[event.nature_changement]}
                       </TableCell>
                       <TableCell>{CAUSE_TYPES[event.cause_type]}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
@@ -194,6 +228,11 @@ export function MaintenanceSection({
                         {formatDate(event.date)} ·{" "}
                         {BIKE_SYSTEMS[event.system]}
                       </p>
+                      {showInterventionColumn && (
+                        <p className="text-sm text-muted-foreground">
+                          Intervention : {interventionCell(event)}
+                        </p>
+                      )}
                     </div>
                     <span className="whitespace-nowrap text-sm font-medium">
                       {formatCost(event.cost)}
@@ -201,7 +240,7 @@ export function MaintenanceSection({
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     <Badge variant="secondary">
-                      {INTERVENTION_TYPES[event.intervention_type]}
+                      {NATURE_CHANGEMENT_TYPES[event.nature_changement]}
                     </Badge>
                     <Badge variant="outline">
                       {CAUSE_TYPES[event.cause_type]}
@@ -240,10 +279,12 @@ export function MaintenanceSection({
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Ajouter une intervention</DialogTitle>
+            <DialogTitle>Ajouter un changement de pièce</DialogTitle>
           </DialogHeader>
           <MaintenanceEventForm
             action={createEvent.bind(null, bikeId)}
+            interventions={interventions}
+            fixedInterventionId={fixedInterventionId}
             onSuccess={() => setAddOpen(false)}
           />
         </DialogContent>
@@ -256,13 +297,15 @@ export function MaintenanceSection({
       >
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Modifier l&apos;intervention</DialogTitle>
+            <DialogTitle>Modifier le changement de pièce</DialogTitle>
           </DialogHeader>
           {editEvent && (
             <MaintenanceEventForm
               key={editEvent.id}
               action={updateEvent.bind(null, editEvent.id, bikeId)}
               event={editEvent}
+              interventions={interventions}
+              fixedInterventionId={fixedInterventionId}
               onSuccess={() => setEditEvent(null)}
             />
           )}

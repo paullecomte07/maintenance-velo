@@ -1,4 +1,4 @@
-// Référentiels fixes du cahier d'intervention (repris du fichier Excel de suivi).
+// Référentiels fixes du cahier de changement de pièces (repris du fichier Excel de suivi).
 
 export const BIKE_CATEGORIES = {
   route: "Route",
@@ -31,24 +31,26 @@ export const BIKE_SYSTEMS = {
 
 export type BikeSystem = keyof typeof BIKE_SYSTEMS;
 
-export const INTERVENTION_TYPES = {
+export const NATURE_CHANGEMENT_TYPES = {
   inspection: "Inspection",
   entretien: "Entretien",
   reparation: "Réparation",
   remise_a_neuf: "Remise à neuf",
 } as const;
 
-export type InterventionType = keyof typeof INTERVENTION_TYPES;
+export type NatureChangementType = keyof typeof NATURE_CHANGEMENT_TYPES;
 
-export const INTERVENTION_TYPE_DESCRIPTIONS: Record<InterventionType, string> =
-  {
-    inspection: "Vérification de l'état des pièces d'usure",
-    entretien: "Changement de petites pièces d'usure, petits bricolages",
-    reparation:
-      "Changement d'une pièce (moins de 50 % de la valeur du module), réparation",
-    remise_a_neuf:
-      "Changement de tout le module, changement de 90 % des pièces, restauration totale",
-  };
+export const NATURE_CHANGEMENT_DESCRIPTIONS: Record<
+  NatureChangementType,
+  string
+> = {
+  inspection: "Vérification de l'état des pièces d'usure",
+  entretien: "Changement de petites pièces d'usure, petits bricolages",
+  reparation:
+    "Changement d'une pièce (moins de 50 % de la valeur du module), réparation",
+  remise_a_neuf:
+    "Changement de tout le module, changement de 90 % des pièces, restauration totale",
+};
 
 export const CAUSE_TYPES = {
   usure_prematuree: "Usure prématurée",

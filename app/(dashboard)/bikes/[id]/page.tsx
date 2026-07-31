@@ -15,7 +15,7 @@ import { MaintenanceAnalysis } from "@/components/maintenance-analysis";
 import { MaintenanceSection } from "@/components/maintenance-section";
 import { createClient } from "@/lib/supabase/server";
 import { BIKE_CATEGORIES } from "@/lib/reference-data";
-import type { Bike, MaintenanceEvent } from "@/lib/types";
+import type { Bike, Intervention, MaintenanceEvent } from "@/lib/types";
 
 function formatDate(date: string | null) {
   if (!date) return "—";
@@ -51,6 +51,13 @@ export default async function BikePage({
     .order("date", { ascending: false })
     .order("created_at", { ascending: false })
     .returns<MaintenanceEvent[]>();
+
+  const { data: interventions } = await supabase
+    .from("interventions")
+    .select("*")
+    .eq("bike_id", bike.id)
+    .order("date", { ascending: false })
+    .returns<Intervention[]>();
 
   const deleteAction = deleteBike.bind(null, bike.id);
 
@@ -91,6 +98,9 @@ export default async function BikePage({
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" asChild>
+            <Link href={`/bikes/${bike.id}/interventions`}>Interventions</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
             <Link href={`/bikes/${bike.id}/edit`}>Modifier</Link>
           </Button>
           <DeleteBikeButton bikeName={bike.name} onDelete={deleteAction} />
@@ -113,7 +123,11 @@ export default async function BikePage({
         </CardContent>
       </Card>
 
-      <MaintenanceSection bikeId={bike.id} events={events ?? []} />
+      <MaintenanceSection
+        bikeId={bike.id}
+        events={events ?? []}
+        interventions={interventions ?? []}
+      />
 
       <MaintenanceAnalysis
         bikeId={bike.id}
