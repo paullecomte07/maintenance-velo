@@ -8,10 +8,10 @@ import {
   BIKE_CATEGORIES,
   BIKE_SYSTEMS,
   CAUSE_TYPES,
-  INTERVENTION_TYPES,
+  NATURE_CHANGEMENT_TYPES,
 } from "@/lib/reference-data";
 import { createClient } from "@/lib/supabase/server";
-import type { Bike, MaintenanceEvent } from "@/lib/types";
+import { NEW_INTERVENTION, type Bike, type MaintenanceEvent } from "@/lib/types";
 
 export type EventFormState = { error: string | null; success: boolean };
 
@@ -28,10 +28,49 @@ function eventPayload(formData: FormData) {
     date: formData.get("date") as string,
     title: (formData.get("title") as string).trim(),
     system: formData.get("system") as string,
-    intervention_type: formData.get("intervention_type") as string,
+    nature_changement: formData.get("nature_changement") as string,
     cause_type: formData.get("cause_type") as string,
     cost: cost ? Number(cost) : null,
   };
+}
+
+// Un changement de pièce est toujours rattaché à une intervention : soit une
+// existante, soit une nouvelle créée à la volée depuis le formulaire.
+async function resolveInterventionId(
+  supabase: ReturnType<typeof createClient>,
+  bikeId: string,
+  formData: FormData
+): Promise<{ id: string } | { error: string }> {
+  const submitted = (formData.get("intervention_id") as string | null)?.trim();
+
+  if (!submitted) {
+    return { error: "Sélectionne une intervention de rattachement." };
+  }
+
+  if (submitted !== NEW_INTERVENTION) {
+    return { id: submitted };
+  }
+
+  const title = (formData.get("new_intervention_title") as string)?.trim();
+  if (!title) {
+    return { error: "Donne un nom à la nouvelle intervention." };
+  }
+
+  const { data, error } = await supabase
+    .from("interventions")
+    .insert({
+      bike_id: bikeId,
+      title,
+      date: formData.get("new_intervention_date") as string,
+    })
+    .select("id")
+    .single<{ id: string }>();
+
+  if (error || !data) {
+    return { error: "La création de l'intervention a échoué. Réessaie." };
+  }
+
+  return { id: data.id };
 }
 
 export async function createEvent(
@@ -41,18 +80,27 @@ export async function createEvent(
 ): Promise<EventFormState> {
   const supabase = createClient();
 
-  const { error } = await supabase
-    .from("maintenance_events")
-    .insert({ ...eventPayload(formData), bike_id: bikeId });
+  const intervention = await resolveInterventionId(supabase, bikeId, formData);
+  if ("error" in intervention) {
+    return { error: intervention.error, success: false };
+  }
+
+  const { error } = await supabase.from("maintenance_events").insert({
+    ...eventPayload(formData),
+    bike_id: bikeId,
+    intervention_id: intervention.id,
+  });
 
   if (error) {
     return {
-      error: "L'enregistrement de l'intervention a échoué. Réessaie.",
+      error: "L'enregistrement du changement a échoué. Réessaie.",
       success: false,
     };
   }
 
   revalidatePath(`/bikes/${bikeId}`);
+  revalidatePath(`/bikes/${bikeId}/interventions`);
+  revalidatePath(`/bikes/${bikeId}/interventions/${intervention.id}`);
   return { error: null, success: true };
 }
 
@@ -64,19 +112,26 @@ export async function updateEvent(
 ): Promise<EventFormState> {
   const supabase = createClient();
 
+  const intervention = await resolveInterventionId(supabase, bikeId, formData);
+  if ("error" in intervention) {
+    return { error: intervention.error, success: false };
+  }
+
   const { error } = await supabase
     .from("maintenance_events")
-    .update(eventPayload(formData))
+    .update({ ...eventPayload(formData), intervention_id: intervention.id })
     .eq("id", eventId);
 
   if (error) {
     return {
-      error: "La modification de l'intervention a échoué. Réessaie.",
+      error: "La modification du changement a échoué. Réessaie.",
       success: false,
     };
   }
 
   revalidatePath(`/bikes/${bikeId}`);
+  revalidatePath(`/bikes/${bikeId}/interventions`);
+  revalidatePath(`/bikes/${bikeId}/interventions/${intervention.id}`);
   return { error: null, success: true };
 }
 
@@ -89,10 +144,11 @@ export async function deleteEvent(eventId: string, bikeId: string) {
     .eq("id", eventId);
 
   if (error) {
-    throw new Error("La suppression de l'intervention a échoué.");
+    throw new Error("La suppression du changement a échoué.");
   }
 
   revalidatePath(`/bikes/${bikeId}`);
+  revalidatePath(`/bikes/${bikeId}/interventions`, "layout");
 }
 
 function formatEventsForPrompt(bike: Bike, events: MaintenanceEvent[]) {
@@ -102,7 +158,7 @@ function formatEventsForPrompt(bike: Bike, events: MaintenanceEvent[]) {
 
   const eventLines = events.map((e) => {
     const cost = e.cost !== null ? `${e.cost} €` : "coût inconnu";
-    return `- ${e.date} · ${BIKE_SYSTEMS[e.system]} · ${e.title} · ${INTERVENTION_TYPES[e.intervention_type]} · ${CAUSE_TYPES[e.cause_type]} · ${cost}`;
+    return `- ${e.date} · ${BIKE_SYSTEMS[e.system]} · ${e.title} · ${NATURE_CHANGEMENT_TYPES[e.nature_changement]} · ${CAUSE_TYPES[e.cause_type]} · ${cost}`;
   });
 
   return [
@@ -111,7 +167,7 @@ function formatEventsForPrompt(bike: Bike, events: MaintenanceEvent[]) {
     ageLine,
     bike.mileage_km !== null ? `Kilométrage : ${bike.mileage_km} km` : "Kilométrage inconnu",
     "",
-    "Cahier d'intervention (du plus ancien au plus récent) :",
+    "Cahier de changement de pièces (du plus ancien au plus récent) :",
     ...eventLines,
   ].join("\n");
 }
@@ -170,7 +226,7 @@ export async function generateAnalysis(
 
   if (!events || events.length === 0) {
     return {
-      error: "Ajoute au moins une intervention avant de lancer une analyse.",
+      error: "Ajoute au moins un changement de pièce avant de lancer une analyse.",
       success: false,
     };
   }

@@ -1,30 +1,30 @@
 import { expect, test } from "@playwright/test";
 
-// Tests E2E — US#4 (Vélos) & US#5 (Cahier d'intervention)
+// Tests E2E — US#4 (Vélos) & US#5 (Cahier de changement de pièces)
 // Scénario: Créer un vélo de test [US#4]
 //   Étant donné que je suis connecté
 //   Quand j'ajoute un vélo avec un nom et un prix d'achat
 //   Alors le vélo apparaît dans ma liste
-// Scénario: Ajouter une intervention au cahier [US#5]
+// Scénario: Ajouter un changement au cahier [US#5]
 //   Étant donné qu'un vélo existe
-//   Quand j'ajoute une intervention avec un titre
-//   Alors elle apparaît dans le cahier d'intervention
-// Scénario: Modifier l'intervention [US#5]
-//   Étant donné qu'une intervention existe
+//   Quand j'ajoute un changement de pièce avec un titre
+//   Alors il apparaît dans le cahier de changement de pièces
+// Scénario: Modifier le changement [US#5]
+//   Étant donné qu'un changement existe
 //   Quand je modifie son titre
 //   Alors le nouveau titre apparaît dans le cahier
-// Scénario: Supprimer l'intervention [US#5]
-//   Étant donné qu'une intervention existe
-//   Quand je la supprime et confirme
-//   Alors le cahier n'affiche plus aucune intervention
+// Scénario: Supprimer le changement [US#5]
+//   Étant donné qu'un changement existe
+//   Quand je le supprime et confirme
+//   Alors le cahier n'affiche plus aucun changement
 // Scénario: Supprimer le vélo de test (nettoyage) [US#4]
 //   Étant donné qu'un vélo de test existe
 //   Quand je le supprime et confirme
 //   Alors il n'apparaît plus dans ma liste
 //
-// Parcours complet : création d'un vélo de test, gestion du cahier
-// d'intervention, puis nettoyage (suppression du vélo). Les données créées
-// sont préfixées [TEST] et supprimées en fin de parcours — les données
+// Parcours complet : création d'un vélo de test, gestion du cahier de
+// changement de pièces, puis nettoyage (suppression du vélo). Les données
+// créées sont préfixées [TEST] et supprimées en fin de parcours — les données
 // réelles ne sont jamais touchées. L'encart Analyse n'est jamais déclenché
 // (appel API payant).
 test.describe.configure({ mode: "serial" });
@@ -46,13 +46,24 @@ test("US#4 – Créer un vélo de test", async ({ page }) => {
   await expect(page.getByText(bikeName)).toBeVisible();
 });
 
-test("US#5 – Ajouter une intervention au cahier", async ({ page }) => {
+test("US#5 – Ajouter un changement au cahier", async ({ page }) => {
   await page.goto("/bikes");
   await page.getByText(bikeName).click();
   await expect(page).toHaveURL(/\/bikes\/[0-9a-f-]+$/);
 
-  await page.getByRole("button", { name: "Ajouter une intervention" }).click();
+  await page.getByRole("button", { name: "Ajouter un changement" }).click();
   const dialog = page.getByRole("dialog");
+  // Tout changement est rattaché à une intervention : on la crée à la volée.
+  await dialog
+    .getByRole("combobox")
+    .filter({ hasText: "Sélectionner une intervention" })
+    .click();
+  await page
+    .getByRole("option", { name: "Créer une nouvelle intervention" })
+    .click();
+  await dialog
+    .getByLabel("Nom de la nouvelle intervention *")
+    .fill("[TEST] Intervention du cahier");
   await dialog.getByLabel("Titre *").fill(eventTitle);
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
 
@@ -61,7 +72,7 @@ test("US#5 – Ajouter une intervention au cahier", async ({ page }) => {
   ).toBeVisible({ timeout: 15000 });
 });
 
-test("US#5 – Modifier l'intervention", async ({ page }) => {
+test("US#5 – Modifier le changement", async ({ page }) => {
   await page.goto("/bikes");
   await page.getByText(bikeName).click();
 
@@ -79,7 +90,7 @@ test("US#5 – Modifier l'intervention", async ({ page }) => {
   ).toBeVisible({ timeout: 15000 });
 });
 
-test("US#5 – Supprimer l'intervention", async ({ page }) => {
+test("US#5 – Supprimer le changement", async ({ page }) => {
   await page.goto("/bikes");
   await page.getByText(bikeName).click();
 
@@ -94,7 +105,7 @@ test("US#5 – Supprimer l'intervention", async ({ page }) => {
     .click();
 
   await expect(
-    page.getByText("Aucune intervention enregistrée pour ce vélo.")
+    page.getByText("Aucun changement de pièce enregistré.")
   ).toBeVisible({ timeout: 15000 });
 });
 
