@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
+import {
+  CAUSE_MANQUANTE,
+  parseInterventionCause,
+} from "@/lib/reference-data";
 import { createClient } from "@/lib/supabase/server";
 import type { Intervention } from "@/lib/types";
 
@@ -53,12 +57,18 @@ export async function createIntervention(
     return { error: "Donne un nom à cette intervention.", success: false };
   }
 
+  const cause = parseInterventionCause(formData.get("cause"));
+  if (!cause) {
+    return { error: CAUSE_MANQUANTE, success: false };
+  }
+
   const datePrevue = (formData.get("date_prevue") as string)?.trim();
   const note = (formData.get("note") as string)?.trim();
 
   const { error } = await supabase.from("interventions").insert({
     bike_id: bikeId,
     title,
+    cause,
     date_prevue: datePrevue || null,
     note: note || null,
     started_at: null,
@@ -90,6 +100,11 @@ export async function updateIntervention(
     return { error: "Donne un nom à cette intervention.", success: false };
   }
 
+  // Une intervention importée n'a pas de cause. Ne pas l'exiger ici évite
+  // d'obliger à en inventer une juste pour corriger un titre — mais une cause
+  // déjà posée n'est jamais retirée.
+  const cause = parseInterventionCause(formData.get("cause"));
+
   const datePrevue = (formData.get("date_prevue") as string)?.trim();
   const note = (formData.get("note") as string)?.trim();
 
@@ -97,6 +112,7 @@ export async function updateIntervention(
     .from("interventions")
     .update({
       title,
+      ...(cause ? { cause } : {}),
       date_prevue: datePrevue || null,
       note: note || null,
     })

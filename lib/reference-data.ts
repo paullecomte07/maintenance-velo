@@ -52,6 +52,41 @@ export const NATURE_CHANGEMENT_DESCRIPTIONS: Record<
     "Changement de tout le module, changement de 90 % des pièces, restauration totale",
 };
 
+// Cause d'une intervention : *pourquoi* on ouvre un chantier. À ne pas confondre
+// avec l'état constaté d'une pièce, qui répond à une autre question — voir la
+// planche `parcours/03-cause-action-etat` du projet Claude Design.
+export const INTERVENTION_CAUSES = {
+  accident: "Accident",
+  casse_usure: "Casse d'usure",
+  dysfonctionnement: "Dysfonctionnement",
+  prevention: "Prévention",
+} as const;
+
+export type InterventionCause = keyof typeof INTERVENTION_CAUSES;
+
+export const INTERVENTION_CAUSE_DESCRIPTIONS: Record<InterventionCause, string> =
+  {
+    accident: "Casse due à un accident d'utilisation",
+    casse_usure: "Une pièce a lâché en usage normal",
+    dysfonctionnement: "Ça saute, ça grince, ça frotte — rien de cassé",
+    prevention: "Entretien planifié, avant que ça pose problème",
+  };
+
+export const CAUSE_MANQUANTE = "Indique pourquoi tu ouvres ce chantier.";
+
+/**
+ * La cause est **obligatoire à la saisie mais nullable en base** : l'historique
+ * importé du fichier Excel n'en a pas, et lui en inventer une falsifierait
+ * exactement la donnée que cette refonte corrige. La contrainte vit donc dans
+ * les server actions, pas dans le schéma — d'où ce garde-fou partagé.
+ */
+export function parseInterventionCause(
+  value: FormDataEntryValue | null
+): InterventionCause | null {
+  const cause = typeof value === "string" ? value.trim() : "";
+  return cause in INTERVENTION_CAUSES ? (cause as InterventionCause) : null;
+}
+
 export const CAUSE_TYPES = {
   usure_prematuree: "Usure prématurée",
   usure_normale: "Usure normale",

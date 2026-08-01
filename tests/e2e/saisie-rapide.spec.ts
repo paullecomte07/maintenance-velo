@@ -6,7 +6,9 @@ import {
   deleteBike,
   openBike,
   openIntervention,
+  pickChip,
   pickSystem,
+  planifierIntervention,
   testBikeName,
 } from "./support";
 
@@ -85,20 +87,18 @@ test("US#24 – Impossible d'enregistrer sans nature ni cause", async ({
   await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill("[TEST] Chaîne");
 
   // Aucune valeur pré-cochée : toutes les puces de nature et de cause sont
-  // dans l'état non sélectionné.
-  for (const nature of [
-    "Inspection",
-    "Entretien",
-    "Réparation",
-    "Remise à neuf",
-  ]) {
+  // dans l'état non sélectionné. Le passage par le groupe est nécessaire —
+  // « Accident » est proposé aussi bien pour la pièce que pour le chantier.
+  const nature = dialog.getByRole("group", { name: "Nature du changement" });
+  for (const label of ["Inspection", "Entretien", "Réparation", "Remise à neuf"]) {
     await expect(
-      dialog.getByRole("button", { name: nature, exact: true })
+      nature.getByRole("button", { name: label, exact: true })
     ).toHaveAttribute("aria-pressed", "false");
   }
-  for (const cause of ["Usure normale", "Usure prématurée", "Accident"]) {
+  const cause = dialog.getByRole("group", { name: "Type de cause" });
+  for (const label of ["Usure normale", "Usure prématurée", "Accident"]) {
     await expect(
-      dialog.getByRole("button", { name: cause, exact: true })
+      cause.getByRole("button", { name: label, exact: true })
     ).toHaveAttribute("aria-pressed", "false");
   }
 
@@ -195,20 +195,14 @@ test("US#24 – Corriger le rattachement proposé", async ({ page }) => {
   await openBike(page, bikeName);
 
   // Une intervention de destination, planifiée.
-  await page.getByRole("button", { name: "Planifier une intervention" }).click();
-  let dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Nom de l.intervention/).fill(autreChantier);
-  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
-  await expect(dialog).toBeHidden({ timeout: 15000 });
+  await planifierIntervention(page, autreChantier);
 
   await page.getByRole("button", { name: "Ajouter une pièce" }).click();
-  dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("dialog");
   await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill("[TEST] Pneus");
   await pickSystem(page, dialog, "Roue arrière");
-  await dialog.getByRole("button", { name: "Entretien", exact: true }).click();
-  await dialog
-    .getByRole("button", { name: "Usure normale", exact: true })
-    .click();
+  await pickChip(dialog, "Nature du changement", "Entretien");
+  await pickChip(dialog, "Type de cause", "Usure normale");
 
   // On corrige le rattachement proposé.
   await dialog.getByRole("button", { name: "Changer" }).click();

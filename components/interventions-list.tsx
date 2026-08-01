@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CauseBadge } from "@/components/cause-badge";
 import { isEnRetard, type Intervention } from "@/lib/types";
 
 export type InterventionStats = Record<
@@ -87,6 +88,9 @@ function InterventionRow({
             <p className="mt-0.5 text-sm text-muted-foreground">
               {subtitle} · {stat.count} pièce{stat.count > 1 ? "s" : ""}
             </p>
+            <div className="mt-1.5">
+              <CauseBadge cause={intervention.cause} />
+            </div>
           </div>
           {stat.totalCost > 0 && (
             <span className="whitespace-nowrap text-sm font-medium tabular-nums">

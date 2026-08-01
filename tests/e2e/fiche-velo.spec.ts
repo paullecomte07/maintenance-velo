@@ -7,6 +7,7 @@ import {
   group,
   openBike,
   openIntervention,
+  planifierIntervention,
   testBikeName,
 } from "./support";
 
@@ -79,11 +80,7 @@ test("US#25 – Les trois groupes d'interventions sont visibles ensemble", async
 
   // …une à venir…
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Planifier une intervention" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Nom de l.intervention/).fill(aVenir);
-  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
-  await expect(dialog).toBeHidden({ timeout: 15000 });
+  await planifierIntervention(page, aVenir);
 
   // …et une en cours.
   await addPiece(page, {

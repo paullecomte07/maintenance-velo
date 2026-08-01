@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
+import { ChipGroup } from "@/components/chip-group";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,11 +21,14 @@ import {
   BIKE_SYSTEMS,
   CAUSE_TYPE_DESCRIPTIONS,
   CAUSE_TYPES,
+  INTERVENTION_CAUSE_DESCRIPTIONS,
+  INTERVENTION_CAUSES,
   NATURE_CHANGEMENT_DESCRIPTIONS,
   NATURE_CHANGEMENT_TYPES,
   systemsForPart,
   type BikeSystem,
   type CauseType,
+  type InterventionCause,
   type NatureChangementType,
 } from "@/lib/reference-data";
 import type { Intervention, MaintenanceEvent } from "@/lib/types";
@@ -41,58 +45,6 @@ function SubmitButton({ label, disabled }: { label: string; disabled: boolean })
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("fr-FR");
-}
-
-/**
- * Groupe de puces à choix unique. Toutes les valeurs sont visibles d'un coup
- * d'œil, et **aucune n'est pré-sélectionnée** : les anciennes valeurs par
- * défaut produisaient silencieusement de la donnée fausse sur les trois champs
- * dont dépend toute l'analyse.
- */
-function ChipGroup<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-  hint,
-}: {
-  label: string;
-  options: Record<T, string>;
-  value: T | null;
-  onChange: (value: T) => void;
-  hint?: string;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Label>{label} *</Label>
-        {value === null && (
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-destructive">
-            À choisir
-          </span>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {(Object.entries(options) as [T, string][]).map(([key, text]) => (
-          <button
-            key={key}
-            type="button"
-            aria-pressed={value === key}
-            onClick={() => onChange(key)}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs transition-colors",
-              value === key
-                ? "border-primary bg-primary font-medium text-primary-foreground"
-                : "border-input bg-background text-muted-foreground hover:bg-muted"
-            )}
-          >
-            {text}
-          </button>
-        ))}
-      </div>
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
 }
 
 export function MaintenanceEventForm({
@@ -132,6 +84,9 @@ export function MaintenanceEventForm({
   const [causeType, setCauseType] = useState<CauseType | null>(
     event?.cause_type ?? null
   );
+  // Cause du *chantier*, demandée uniquement quand cette pièce en ouvre un.
+  const [interventionCause, setInterventionCause] =
+    useState<InterventionCause | null>(null);
   // Rattachement : vide = « laisse le serveur décider » (chantier ouvert, ou
   // ouverture d'un nouveau chantier). Renseigné = correction explicite.
   const [interventionId, setInterventionId] = useState(
@@ -163,7 +118,11 @@ export function MaintenanceEventForm({
     : openIntervention;
   // Un chantier existe déjà (imposé ou ouvert) : on ne demande pas de titre.
   const needsNewChantier = !fixedInterventionId && !openIntervention && !event;
-  const incomplete = !system || !natureChangement || !causeType;
+  const incomplete =
+    !system ||
+    !natureChangement ||
+    !causeType ||
+    (needsNewChantier && !interventionCause);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -321,20 +280,41 @@ export function MaintenanceEventForm({
       </div>
 
       {needsNewChantier && (
-        <div className="space-y-2 rounded-lg border border-dashed p-3">
-          <Label htmlFor="new_intervention_title">
-            Tu démarres un nouveau chantier. Tu l&apos;appelles comment ? *
-          </Label>
-          <Input
-            id="new_intervention_title"
-            name="new_intervention_title"
-            required
-            placeholder="Ex : Révision de printemps"
+        <div className="space-y-3 rounded-lg border border-dashed p-3">
+          <div className="space-y-2">
+            <Label htmlFor="new_intervention_title">
+              Tu démarres un nouveau chantier. Tu l&apos;appelles comment ? *
+            </Label>
+            <Input
+              id="new_intervention_title"
+              name="new_intervention_title"
+              required
+              placeholder="Ex : Révision de printemps"
+            />
+            <p className="text-xs text-muted-foreground">
+              Demandé une seule fois. Les pièces suivantes s&apos;y rattacheront
+              seules, même dans plusieurs jours.
+            </p>
+          </div>
+
+          {/* La cause vaut pour tout le chantier : elle n'est demandée qu'ici,
+              jamais sur les pièces suivantes. */}
+          <ChipGroup
+            label="Pourquoi ce chantier ?"
+            options={INTERVENTION_CAUSES}
+            value={interventionCause}
+            onChange={setInterventionCause}
+            hint={
+              interventionCause
+                ? INTERVENTION_CAUSE_DESCRIPTIONS[interventionCause]
+                : undefined
+            }
           />
-          <p className="text-xs text-muted-foreground">
-            Demandé une seule fois. Les pièces suivantes s&apos;y rattacheront
-            seules, même dans plusieurs jours.
-          </p>
+          <input
+            type="hidden"
+            name="new_intervention_cause"
+            value={interventionCause ?? ""}
+          />
         </div>
       )}
 
@@ -403,7 +383,9 @@ export function MaintenanceEventForm({
       <div className="flex items-center justify-end gap-3">
         {incomplete && (
           <p className="text-xs text-muted-foreground">
-            Choisis le système, la nature et la cause pour enregistrer.
+            {needsNewChantier
+              ? "Choisis le système, la nature, la cause de la pièce et celle du chantier pour enregistrer."
+              : "Choisis le système, la nature et la cause pour enregistrer."}
           </p>
         )}
         <SubmitButton
