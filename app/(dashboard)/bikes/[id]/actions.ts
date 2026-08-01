@@ -7,8 +7,10 @@ import { ANALYSIS_SYSTEM_PROMPT } from "@/lib/prompts/analysis-prompt";
 import {
   BIKE_CATEGORIES,
   BIKE_SYSTEMS,
+  CAUSE_MANQUANTE,
   CAUSE_TYPES,
   NATURE_CHANGEMENT_TYPES,
+  parseInterventionCause,
 } from "@/lib/reference-data";
 import { createClient } from "@/lib/supabase/server";
 import { NEW_INTERVENTION, type Bike, type MaintenanceEvent } from "@/lib/types";
@@ -77,11 +79,19 @@ async function resolveInterventionId(
     return { error: "Donne un nom au chantier que tu démarres." };
   }
 
+  // La cause vaut pour tout le chantier : elle n'est demandée qu'à son
+  // ouverture, jamais sur les pièces suivantes.
+  const cause = parseInterventionCause(formData.get("new_intervention_cause"));
+  if (!cause) {
+    return { error: CAUSE_MANQUANTE };
+  }
+
   const { data, error } = await supabase
     .from("interventions")
     .insert({
       bike_id: bikeId,
       title,
+      cause,
       started_at:
         (formData.get("date") as string) ?? new Date().toISOString().slice(0, 10),
       closed_at: null,

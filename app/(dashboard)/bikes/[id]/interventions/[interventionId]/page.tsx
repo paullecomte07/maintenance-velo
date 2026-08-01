@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { closeIntervention, startIntervention } from "../actions";
+import { CauseBadge } from "@/components/cause-badge";
 import { InterventionHeaderActions } from "@/components/intervention-header-actions";
 import { MaintenanceSection } from "@/components/maintenance-section";
 import { Badge } from "@/components/ui/badge";
@@ -120,6 +121,7 @@ export default async function InterventionPage({
             {INTERVENTION_STATUS_LABELS[status]}
           </Badge>
           {enRetard && <Badge variant="destructive">En retard</Badge>}
+          <CauseBadge cause={intervention.cause} />
         </div>
         <p className="text-sm text-muted-foreground">
           {subtitle} · {pieces.length} pièce{pieces.length > 1 ? "s" : ""}

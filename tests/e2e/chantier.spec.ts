@@ -7,7 +7,9 @@ import {
   isoDaysAgo,
   openBike,
   openIntervention,
+  pickChip,
   pickSystem,
+  planifierIntervention,
   testBikeName,
 } from "./support";
 
@@ -80,13 +82,12 @@ test("US#23 – Nommer le chantier à son ouverture", async ({ page }) => {
 
   await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill(piece1);
   await pickSystem(page, dialog, "Transmission");
-  await dialog.getByRole("button", { name: "Entretien", exact: true }).click();
-  await dialog
-    .getByRole("button", { name: "Usure normale", exact: true })
-    .click();
+  await pickChip(dialog, "Nature du changement", "Entretien");
+  await pickChip(dialog, "Type de cause", "Usure normale");
   await dialog.getByLabel("Date *").fill(isoDaysAgo(3));
   await dialog.getByLabel("Coût (€)").fill("30");
   await dialog.getByLabel(/Tu démarres un nouveau chantier/).fill(chantier);
+  await pickChip(dialog, "Pourquoi ce chantier ?", "Prévention");
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
@@ -109,10 +110,8 @@ test("US#23 – Rattacher une pièce à un chantier ouvert trois jours plus tôt
 
   await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill(piece2);
   await pickSystem(page, dialog, "Transmission");
-  await dialog.getByRole("button", { name: "Réparation", exact: true }).click();
-  await dialog
-    .getByRole("button", { name: "Usure normale", exact: true })
-    .click();
+  await pickChip(dialog, "Nature du changement", "Réparation");
+  await pickChip(dialog, "Type de cause", "Usure normale");
   await dialog.getByLabel("Coût (€)").fill("20");
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
@@ -191,11 +190,7 @@ test("US#23 – Déplacer une pièce vers une autre intervention", async ({
   await openBike(page, bikeName);
 
   // Une seconde intervention, planifiée, sert de destination.
-  await page.getByRole("button", { name: "Planifier une intervention" }).click();
-  let dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Nom de l.intervention/).fill(autreChantier);
-  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
-  await expect(dialog).toBeHidden({ timeout: 15000 });
+  await planifierIntervention(page, autreChantier);
 
   await openIntervention(page, chantierRenomme);
   await page
@@ -204,7 +199,7 @@ test("US#23 – Déplacer une pièce vers une autre intervention", async ({
     .getByRole("button", { name: "Déplacer" })
     .click();
 
-  dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("dialog");
   await dialog
     .getByRole("combobox", { name: "Intervention de destination" })
     .click();

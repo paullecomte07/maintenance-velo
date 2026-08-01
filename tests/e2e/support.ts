@@ -57,12 +57,47 @@ export type PieceInput = {
   /** Nom du chantier à ouvrir, quand aucun n'est en cours. */
   nouveauChantier?: string;
   /**
+   * Cause du chantier ouvert. N'a de sens qu'avec `nouveauChantier` : la cause
+   * vaut pour toute l'intervention et n'est demandée qu'à son ouverture.
+   */
+  causeChantier?: string;
+  /**
    * Système à choisir. Obligatoire dès que le titre n'appartient pas au
    * référentiel des organes — c'est le cas de tous nos titres préfixés
    * [TEST] — puisque le système ne peut alors pas être déduit.
    */
   systeme?: string;
 };
+
+/**
+ * Choisit une puce dans le groupe nommé. Le passage par le groupe n'est pas
+ * décoratif : « Accident » est proposé aussi bien comme cause d'un chantier que
+ * comme cause d'une pièce, dans le même formulaire.
+ */
+export async function pickChip(
+  scope: Locator,
+  groupe: string,
+  valeur: string
+) {
+  await scope
+    .getByRole("group", { name: groupe })
+    .getByRole("button", { name: valeur, exact: true })
+    .click();
+}
+
+/** Crée une intervention planifiée depuis la fiche vélo. */
+export async function planifierIntervention(
+  page: Page,
+  titre: string,
+  { cause = "Prévention" }: { cause?: string } = {}
+) {
+  await page.getByRole("button", { name: "Planifier une intervention" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel(/Nom de l.intervention/).fill(titre);
+  await pickChip(dialog, "Pourquoi ce chantier ?", cause);
+  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
+  await expect(dialog).toBeHidden({ timeout: 15000 });
+}
 
 /**
  * Choisit le système, que le formulaire l'affiche en puces (organe ambigu,
@@ -92,12 +127,8 @@ export async function fillPiece(page: Page, piece: PieceInput) {
     await pickSystem(page, dialog, piece.systeme);
   }
 
-  await dialog
-    .getByRole("button", { name: piece.nature ?? "Entretien", exact: true })
-    .click();
-  await dialog
-    .getByRole("button", { name: piece.cause ?? "Usure normale", exact: true })
-    .click();
+  await pickChip(dialog, "Nature du changement", piece.nature ?? "Entretien");
+  await pickChip(dialog, "Type de cause", piece.cause ?? "Usure normale");
 
   if (piece.date) await dialog.getByLabel("Date *").fill(piece.date);
   if (piece.cout) await dialog.getByLabel("Coût (€)").fill(piece.cout);
@@ -105,6 +136,12 @@ export async function fillPiece(page: Page, piece: PieceInput) {
     await dialog
       .getByLabel(/Tu démarres un nouveau chantier/)
       .fill(piece.nouveauChantier);
+    // Obligatoire à l'ouverture d'un chantier : le bouton reste inactif sans.
+    await pickChip(
+      dialog,
+      "Pourquoi ce chantier ?",
+      piece.causeChantier ?? "Prévention"
+    );
   }
 
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();

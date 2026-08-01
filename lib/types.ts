@@ -2,6 +2,7 @@ import type {
   BikeCategory,
   BikeSystem,
   CauseType,
+  InterventionCause,
   NatureChangementType,
 } from "@/lib/reference-data";
 
@@ -40,6 +41,11 @@ export type Intervention = {
   date_prevue: string | null;
   /** `null` tant que le chantier n'est pas clôturé. */
   closed_at: string | null;
+  /**
+   * Pourquoi ce chantier est ouvert. Obligatoire à la saisie, mais `null` sur
+   * tout l'historique importé : la migration n'invente aucune cause.
+   */
+  cause: InterventionCause | null;
   note: string | null;
   created_at: string;
 };
