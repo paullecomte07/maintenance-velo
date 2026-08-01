@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import {
-  createEvent,
   deleteEvent,
+  moveEvent,
   updateEvent,
 } from "@/app/(dashboard)/bikes/[id]/actions";
 import { MaintenanceEventForm } from "@/components/maintenance-event-form";
+import { QuickAddEvent } from "@/components/quick-add-event";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,13 +27,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   BIKE_SYSTEMS,
   CAUSE_TYPES,
@@ -100,141 +99,135 @@ function DeleteEventDialog({
   );
 }
 
+/**
+ * Déplacer une pièce d'un chantier vers un autre : sans cela, une erreur de
+ * rattachement automatique deviendrait définitive.
+ */
+function MoveEventDialog({
+  event,
+  bikeId,
+  interventions,
+  open,
+  onOpenChange,
+}: {
+  event: MaintenanceEvent;
+  bikeId: string;
+  interventions: Intervention[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [target, setTarget] = useState(event.intervention_id);
+  const [isPending, startTransition] = useTransition();
+  const others = interventions.filter((i) => i.id !== event.intervention_id);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Déplacer « {event.title} »</DialogTitle>
+          <DialogDescription>
+            Choisis l&apos;intervention qui doit porter ce changement.
+          </DialogDescription>
+        </DialogHeader>
+        {others.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Ce vélo n&apos;a pas d&apos;autre intervention où déplacer cette
+            pièce.
+          </p>
+        ) : (
+          <Select value={target} onValueChange={setTarget}>
+            <SelectTrigger aria-label="Intervention de destination">
+              <SelectValue placeholder="Sélectionner une intervention" />
+            </SelectTrigger>
+            <SelectContent>
+              {others.map((intervention) => (
+                <SelectItem key={intervention.id} value={intervention.id}>
+                  {intervention.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <DialogFooter>
+          <Button
+            disabled={isPending || others.length === 0 || target === event.intervention_id}
+            onClick={() =>
+              startTransition(async () => {
+                const { error } = await moveEvent(event.id, target, bikeId);
+                if (error) {
+                  toast.error(error);
+                  return;
+                }
+                toast.success("Changement déplacé.");
+                onOpenChange(false);
+              })
+            }
+          >
+            {isPending ? "Déplacement…" : "Déplacer"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function MaintenanceSection({
   bikeId,
   events,
   interventions,
   fixedInterventionId,
+  lastMileageKm,
 }: {
   bikeId: string;
   events: MaintenanceEvent[];
+  /** Toutes les interventions du vélo — nécessaires pour le déplacement. */
   interventions: Intervention[];
   fixedInterventionId?: string;
+  lastMileageKm?: number | null;
 }) {
-  const [addOpen, setAddOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<MaintenanceEvent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MaintenanceEvent | null>(
     null
   );
+  const [moveTarget, setMoveTarget] = useState<MaintenanceEvent | null>(null);
 
   const totalCost = events.reduce((sum, e) => sum + (e.cost ?? 0), 0);
-  const interventionById = new Map(interventions.map((i) => [i.id, i]));
-
-  // Sur la fiche d'une intervention, la colonne serait la même sur chaque ligne.
-  const showInterventionColumn = !fixedInterventionId;
-
-  function interventionCell(event: MaintenanceEvent) {
-    const intervention = event.intervention_id
-      ? interventionById.get(event.intervention_id)
-      : undefined;
-
-    if (!intervention) return "—";
-
-    return (
-      <Link
-        href={`/bikes/${bikeId}/interventions/${intervention.id}`}
-        className="underline underline-offset-4"
-      >
-        {intervention.title}
-      </Link>
-    );
-  }
 
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-lg">
-          Cahier de changement de pièces
-        </CardTitle>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
-          Ajouter un changement
-        </Button>
+        <CardTitle className="text-lg">Pièces changées</CardTitle>
+        <QuickAddEvent
+          bikeId={bikeId}
+          interventions={interventions}
+          fixedInterventionId={fixedInterventionId}
+          lastMileageKm={lastMileageKm}
+        />
       </CardHeader>
       <CardContent className="space-y-4">
         {events.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            Aucun changement de pièce enregistré.
+            Aucune pièce enregistrée dans ce chantier.
           </p>
         ) : (
           <>
-            {/* Tableau (desktop) */}
-            <div className="hidden overflow-x-auto md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Titre</TableHead>
-                    {showInterventionColumn && (
-                      <TableHead>Intervention</TableHead>
-                    )}
-                    <TableHead>Système</TableHead>
-                    <TableHead>Nature</TableHead>
-                    <TableHead>Cause</TableHead>
-                    <TableHead className="text-right">Coût</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {events.map((event) => (
-                    <TableRow key={event.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(event.date)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {event.title}
-                      </TableCell>
-                      {showInterventionColumn && (
-                        <TableCell>{interventionCell(event)}</TableCell>
-                      )}
-                      <TableCell>{BIKE_SYSTEMS[event.system]}</TableCell>
-                      <TableCell>
-                        {NATURE_CHANGEMENT_TYPES[event.nature_changement]}
-                      </TableCell>
-                      <TableCell>{CAUSE_TYPES[event.cause_type]}</TableCell>
-                      <TableCell className="whitespace-nowrap text-right">
-                        {formatCost(event.cost)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditEvent(event)}
-                        >
-                          Modifier
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive"
-                          onClick={() => setDeleteTarget(event)}
-                        >
-                          Supprimer
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Cards (mobile) */}
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3">
               {events.map((event) => (
-                <div key={event.id} className="rounded-lg border p-3">
+                <div
+                  key={event.id}
+                  data-testid="piece"
+                  className="rounded-lg border p-3"
+                >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium">{event.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(event.date)} ·{" "}
-                        {BIKE_SYSTEMS[event.system]}
+                        {formatDate(event.date)} · {BIKE_SYSTEMS[event.system]}
+                        {event.mileage_km !== null &&
+                          ` · ${event.mileage_km.toLocaleString("fr-FR")} km`}
                       </p>
-                      {showInterventionColumn && (
-                        <p className="text-sm text-muted-foreground">
-                          Intervention : {interventionCell(event)}
-                        </p>
-                      )}
                     </div>
-                    <span className="whitespace-nowrap text-sm font-medium">
+                    <span className="whitespace-nowrap text-sm font-medium tabular-nums">
                       {formatCost(event.cost)}
                     </span>
                   </div>
@@ -246,13 +239,20 @@ export function MaintenanceSection({
                       {CAUSE_TYPES[event.cause_type]}
                     </Badge>
                   </div>
-                  <div className="mt-2 flex justify-end gap-1">
+                  <div className="mt-2 flex flex-wrap justify-end gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setEditEvent(event)}
                     >
                       Modifier
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setMoveTarget(event)}
+                    >
+                      Déplacer
                     </Button>
                     <Button
                       variant="ghost"
@@ -269,28 +269,14 @@ export function MaintenanceSection({
 
             <p className="border-t pt-3 text-right text-sm">
               Coût total :{" "}
-              <span className="font-semibold">{formatCost(totalCost)}</span>
+              <span className="font-semibold tabular-nums">
+                {formatCost(totalCost)}
+              </span>
             </p>
           </>
         )}
       </CardContent>
 
-      {/* Dialog ajout */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Ajouter un changement de pièce</DialogTitle>
-          </DialogHeader>
-          <MaintenanceEventForm
-            action={createEvent.bind(null, bikeId)}
-            interventions={interventions}
-            fixedInterventionId={fixedInterventionId}
-            onSuccess={() => setAddOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog édition */}
       <Dialog
         open={editEvent !== null}
         onOpenChange={(open) => !open && setEditEvent(null)}
@@ -306,19 +292,29 @@ export function MaintenanceSection({
               event={editEvent}
               interventions={interventions}
               fixedInterventionId={fixedInterventionId}
+              lastMileageKm={lastMileageKm}
               onSuccess={() => setEditEvent(null)}
             />
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog suppression */}
       {deleteTarget && (
         <DeleteEventDialog
           event={deleteTarget}
           bikeId={bikeId}
           open={deleteTarget !== null}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
+        />
+      )}
+
+      {moveTarget && (
+        <MoveEventDialog
+          event={moveTarget}
+          bikeId={bikeId}
+          interventions={interventions}
+          open={moveTarget !== null}
+          onOpenChange={(open) => !open && setMoveTarget(null)}
         />
       )}
     </Card>

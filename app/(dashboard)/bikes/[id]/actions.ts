@@ -24,6 +24,7 @@ export type AnalysisState = {
 
 function eventPayload(formData: FormData) {
   const cost = (formData.get("cost") as string)?.trim();
+  const mileage = (formData.get("mileage_km") as string)?.trim();
   return {
     date: formData.get("date") as string,
     title: (formData.get("title") as string).trim(),
@@ -31,11 +32,21 @@ function eventPayload(formData: FormData) {
     nature_changement: formData.get("nature_changement") as string,
     cause_type: formData.get("cause_type") as string,
     cost: cost ? Number(cost) : null,
+    mileage_km: mileage ? Number(mileage) : null,
   };
 }
 
-// Un changement de pièce est toujours rattaché à une intervention : soit une
-// existante, soit une nouvelle créée à la volée depuis le formulaire.
+/**
+ * Détermine le chantier auquel rattacher une pièce, sans jamais poser la
+ * question quand on peut y répondre :
+ *
+ *   1. un rattachement explicite (correction depuis le formulaire) gagne ;
+ *   2. sinon, le chantier ouvert du vélo — quelle que soit la date de la pièce,
+ *      c'est ce qui permet à un chantier de s'étaler sur plusieurs jours ;
+ *   3. sinon seulement, on demande un titre et on ouvre un nouveau chantier.
+ *
+ * Le titre est toujours saisi par l'utilisateur : aucun nom n'est généré.
+ */
 async function resolveInterventionId(
   supabase: ReturnType<typeof createClient>,
   bikeId: string,
@@ -43,17 +54,27 @@ async function resolveInterventionId(
 ): Promise<{ id: string } | { error: string }> {
   const submitted = (formData.get("intervention_id") as string | null)?.trim();
 
-  if (!submitted) {
-    return { error: "Sélectionne une intervention de rattachement." };
+  if (submitted && submitted !== NEW_INTERVENTION) {
+    return { id: submitted };
   }
 
-  if (submitted !== NEW_INTERVENTION) {
-    return { id: submitted };
+  if (!submitted) {
+    const { data: open } = await supabase
+      .from("interventions")
+      .select("id")
+      .eq("bike_id", bikeId)
+      .not("started_at", "is", null)
+      .is("closed_at", null)
+      .maybeSingle<{ id: string }>();
+
+    if (open) {
+      return { id: open.id };
+    }
   }
 
   const title = (formData.get("new_intervention_title") as string)?.trim();
   if (!title) {
-    return { error: "Donne un nom à la nouvelle intervention." };
+    return { error: "Donne un nom au chantier que tu démarres." };
   }
 
   const { data, error } = await supabase
@@ -61,13 +82,15 @@ async function resolveInterventionId(
     .insert({
       bike_id: bikeId,
       title,
-      date: formData.get("new_intervention_date") as string,
+      started_at:
+        (formData.get("date") as string) ?? new Date().toISOString().slice(0, 10),
+      closed_at: null,
     })
     .select("id")
     .single<{ id: string }>();
 
   if (error || !data) {
-    return { error: "La création de l'intervention a échoué. Réessaie." };
+    return { error: "L'ouverture du chantier a échoué. Réessaie." };
   }
 
   return { id: data.id };
@@ -133,6 +156,31 @@ export async function updateEvent(
   revalidatePath(`/bikes/${bikeId}/interventions`);
   revalidatePath(`/bikes/${bikeId}/interventions/${intervention.id}`);
   return { error: null, success: true };
+}
+
+/**
+ * Déplace une pièce d'un chantier vers un autre. Sans cela, une erreur de
+ * rattachement automatique deviendrait définitive.
+ */
+export async function moveEvent(
+  eventId: string,
+  targetInterventionId: string,
+  bikeId: string
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("maintenance_events")
+    .update({ intervention_id: targetInterventionId })
+    .eq("id", eventId);
+
+  if (error) {
+    return { error: "Le déplacement du changement a échoué. Réessaie." };
+  }
+
+  revalidatePath(`/bikes/${bikeId}`);
+  revalidatePath(`/bikes/${bikeId}/interventions`, "layout");
+  return { error: null };
 }
 
 export async function deleteEvent(eventId: string, bikeId: string) {

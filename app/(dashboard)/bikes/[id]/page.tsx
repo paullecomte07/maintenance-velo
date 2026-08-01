@@ -2,20 +2,25 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { deleteBike } from "../actions";
+import { closeIntervention } from "./interventions/actions";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DeleteBikeButton } from "@/components/delete-bike-button";
 import { MaintenanceAnalysis } from "@/components/maintenance-analysis";
-import { MaintenanceSection } from "@/components/maintenance-section";
+import {
+  InterventionsList,
+  type InterventionStats,
+} from "@/components/interventions-list";
+import { QuickAddEvent } from "@/components/quick-add-event";
 import { createClient } from "@/lib/supabase/server";
 import { BIKE_CATEGORIES } from "@/lib/reference-data";
-import type { Bike, Intervention, MaintenanceEvent } from "@/lib/types";
+import {
+  interventionStatus,
+  type Bike,
+  type Intervention,
+  type MaintenanceEvent,
+} from "@/lib/types";
 
 function formatDate(date: string | null) {
   if (!date) return "—";
@@ -56,20 +61,75 @@ export default async function BikePage({
     .from("interventions")
     .select("*")
     .eq("bike_id", bike.id)
-    .order("date", { ascending: false })
     .returns<Intervention[]>();
 
+  const allEvents = events ?? [];
+  const allInterventions = interventions ?? [];
+
+  // Coût, nombre de pièces et plage de dates réelle, par intervention.
+  const stats: InterventionStats = {};
+  const ranges: Record<string, { first: string | null; last: string | null }> =
+    {};
+  for (const event of allEvents) {
+    const key = event.intervention_id;
+    if (!key) continue;
+    const stat = (stats[key] ??= { count: 0, totalCost: 0 });
+    stat.count += 1;
+    stat.totalCost += event.cost ?? 0;
+    const range = (ranges[key] ??= { first: null, last: null });
+    if (!range.first || event.date < range.first) range.first = event.date;
+    if (!range.last || event.date > range.last) range.last = event.date;
+  }
+
+  const enCours = allInterventions.filter(
+    (i) => interventionStatus(i) === "en_cours"
+  );
+  const aVenir = allInterventions
+    .filter((i) => interventionStatus(i) === "a_venir")
+    .sort((a, b) =>
+      (a.date_prevue ?? "9999-99-99").localeCompare(b.date_prevue ?? "9999-99-99")
+    );
+  const terminees = allInterventions
+    .filter((i) => interventionStatus(i) === "terminee")
+    .sort((a, b) => (b.closed_at ?? "").localeCompare(a.closed_at ?? ""));
+
+  const openIntervention = enCours[0] ?? null;
   const deleteAction = deleteBike.bind(null, bike.id);
+
+  // Rappel de clôture : un chantier qui dort depuis plus d'un mois est
+  // probablement fini. On le signale sans jamais le fermer d'office — en usage
+  // loisir, un chantier peut légitimement rester ouvert des semaines.
+  const STALE_AFTER_DAYS = 30;
+  let staleReminder: { days: number; lastActivity: string | null } | null = null;
+  let closeStaleAction: (() => Promise<{ error: string | null }>) | undefined;
+
+  if (openIntervention) {
+    const lastActivity =
+      ranges[openIntervention.id]?.last ?? openIntervention.started_at;
+    if (lastActivity) {
+      const days = Math.floor(
+        (Date.now() - new Date(lastActivity).getTime()) / 86_400_000
+      );
+      if (days > STALE_AFTER_DAYS) {
+        staleReminder = {
+          days,
+          lastActivity: ranges[openIntervention.id]?.last ?? null,
+        };
+        closeStaleAction = closeIntervention.bind(
+          null,
+          openIntervention.id,
+          bike.id
+        );
+      }
+    }
+  }
 
   const identity: [string, React.ReactNode][] = [
     ["Marque", bike.brand ?? "—"],
     ["Modèle", bike.model ?? "—"],
     ["Date d'achat", formatDate(bike.purchase_date)],
     ["Prix d'achat", formatPrice(bike.purchase_price)],
-    [
-      "Kilométrage",
-      bike.mileage_km !== null ? `${bike.mileage_km} km` : "—",
-    ],
+    ["Kilométrage", bike.mileage_km !== null ? `${bike.mileage_km} km` : "—"],
     ["Dépréciation annuelle", `${bike.depreciation_rate} %`],
     [
       "Fiche technique",
@@ -97,9 +157,12 @@ export default async function BikePage({
           <Badge variant="secondary">{BIKE_CATEGORIES[bike.category]}</Badge>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/bikes/${bike.id}/interventions`}>Interventions</Link>
-          </Button>
+          <QuickAddEvent
+            bikeId={bike.id}
+            interventions={allInterventions}
+            openIntervention={openIntervention}
+            lastMileageKm={bike.mileage_km}
+          />
           <Button variant="outline" size="sm" asChild>
             <Link href={`/bikes/${bike.id}/edit`}>Modifier</Link>
           </Button>
@@ -107,31 +170,51 @@ export default async function BikePage({
         </div>
       </div>
 
+      <InterventionsList
+        bikeId={bike.id}
+        enCours={enCours}
+        aVenir={aVenir}
+        terminees={terminees}
+        stats={stats}
+        ranges={ranges}
+        staleReminder={staleReminder}
+        onCloseStale={closeStaleAction}
+      />
+
+      {/* Repliée par défaut : la fiche vélo sert d'abord à voir où en sont les
+          chantiers, pas à relire les caractéristiques de la machine. */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Fiche d&apos;identité</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
-            {identity.map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-4 text-sm">
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="text-right font-medium">{value}</dd>
-              </div>
-            ))}
-          </dl>
+        <CardContent className="p-0">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-6 text-lg font-semibold">
+              Fiche d&apos;identité
+              <span className="text-sm font-normal text-muted-foreground group-open:hidden">
+                Afficher
+              </span>
+              <span className="hidden text-sm font-normal text-muted-foreground group-open:inline">
+                Masquer
+              </span>
+            </summary>
+            <div className="px-6 pb-6">
+              <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                {identity.map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="flex justify-between gap-4 text-sm"
+                  >
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="text-right font-medium">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </details>
         </CardContent>
       </Card>
 
-      <MaintenanceSection
-        bikeId={bike.id}
-        events={events ?? []}
-        interventions={interventions ?? []}
-      />
-
       <MaintenanceAnalysis
         bikeId={bike.id}
-        hasEvents={(events ?? []).length > 0}
+        hasEvents={allEvents.length > 0}
         initialAnalysis={bike.ai_analysis}
         initialGeneratedAt={bike.ai_analysis_generated_at}
       />
