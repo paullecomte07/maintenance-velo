@@ -118,10 +118,12 @@ A responsive web app for personal bike fleet maintenance tracking, with a data-a
 ## Planned data model (Supabase Postgres)
 
 - `bikes`: `id`, `user_id` (FK auth.users, RLS-scoped), `name`, `brand`, `model`, `category` (enum: `route`/`vtt`/`electrique`/`urbain`, default `vtt`), `purchase_date`, `purchase_price` (manual entry, required for depreciation), `mileage_km` (manual entry), `spec_sheet_url` (nullable), `depreciation_rate` (annual %, defaulted by category, editable), `photo_url` (nullable), `created_at`.
-- `interventions`: `id`, `bike_id` (FK bikes), `title` (free text, e.g. "Révision de printemps"), `date`, `note` (nullable), `created_at`. Une intervention est une **session** qui regroupe plusieurs changements de pièces. Pas de coût propre : le coût affiché est la somme des `maintenance_events` rattachés.
-- `maintenance_events` (cahier de changement de pièces) : `id`, `bike_id` (FK bikes), `intervention_id` (FK interventions), `date`, `title` (free text, e.g. "Cassette Shimano"), `system` (enum, fixed reference list — see below), `nature_changement` (enum: `inspection`/`entretien`/`reparation`/`remise_a_neuf`), `cause_type` (enum: `usure_prematuree`/`usure_normale`/`accident`), `cost` (numeric, single amount for the whole event), `created_at`.
+- `interventions`: `id`, `bike_id` (FK bikes), `title` (free text, e.g. "Révision de printemps"), `started_at` (nullable), `date_prevue` (nullable), `closed_at` (nullable), `note` (nullable), `created_at`. Une intervention est un **chantier** qui regroupe plusieurs changements de pièces. Pas de coût propre : le coût affiché est la somme des `maintenance_events` rattachés.
+- **Trois états, déduits des dates plutôt que stockés** (ils ne peuvent donc pas diverger) : `à venir` = `started_at is null` ; `en cours` = `started_at is not null and closed_at is null` ; `terminée` = `closed_at is not null`. Un index unique partiel garantit **un seul chantier ouvert par vélo** — c'est cette contrainte qui permet de rattacher une pièce sans jamais poser la question à la saisie. Un chantier peut s'étaler sur plusieurs jours et ne se clôture **jamais automatiquement** (issue #23).
+- `maintenance_events` (changements de pièces) : `id`, `bike_id` (FK bikes), `intervention_id` (FK interventions, **not null**), `date`, `title` (free text, e.g. "Cassette Shimano"), `system` (enum, fixed reference list — see below), `nature_changement` (enum: `inspection`/`entretien`/`reparation`/`remise_a_neuf`), `cause_type` (enum: `usure_prematuree`/`usure_normale`/`accident`), `cost` (numeric, nullable), `mileage_km` (nullable, relevé au moment du changement), `created_at`.
+- Le `mileage_km` est au niveau de **la pièce**, pas du vélo : c'est ce qui permettra de dire « cette chaîne a tenu 5 400 km ». Cette donnée ne se rattrape pas après coup, d'où sa collecte dès la v1 même si aucune vue ne l'exploite encore (issue #24).
 - RLS enabled on the three tables — a user only sees their own bikes and related interventions/maintenance events.
-- `intervention_id` est **nullable en base pour l'instant** : les changements enregistrés avant l'introduction des interventions n'en ont pas encore. La migration de l'historique (bascule vers une intervention « Historique initial », puis passage en `not null`) reste à faire.
+- Les migrations SQL s'appliquent **à la main dans le SQL Editor Supabase**, dans l'ordre des fichiers `supabase/migrations/`. Il n'y a pas de runner automatique : une PR qui ajoute une migration ne fonctionne qu'une fois celle-ci passée sur la base.
 
 ### Fixed reference lists (from the user's existing tracking spreadsheet)
 
@@ -141,8 +143,8 @@ Exponential decay based on age: `estimated_value = purchase_price * (1 - depreci
 app/
   (auth)/login/page.tsx, signup/page.tsx
   (dashboard)/bikes/page.tsx              # bike list
-  (dashboard)/bikes/[id]/page.tsx         # bike detail + cahier de changement de pièces
-  (dashboard)/bikes/[id]/interventions/   # liste des interventions + fiche d'une intervention
+  (dashboard)/bikes/[id]/page.tsx         # fiche vélo = liste des interventions (3 groupes)
+  (dashboard)/bikes/[id]/interventions/[interventionId]/  # fiche d'un chantier + ses pièces
   (dashboard)/bikes/[id]/import/page.tsx  # CSV import for this bike
   (dashboard)/analytics/page.tsx          # cost vs. value dashboard
   layout.tsx, middleware.ts               # route protection

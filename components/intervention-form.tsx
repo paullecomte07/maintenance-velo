@@ -45,8 +45,6 @@ export function InterventionForm({
     }
   }, [state, intervention, onSuccess]);
 
-  const today = new Date().toISOString().slice(0, 10);
-
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-2">
@@ -60,15 +58,19 @@ export function InterventionForm({
         />
       </div>
 
+      {/* Facultative : un chantier peut être prévu « un jour », sans échéance. */}
       <div className="space-y-2">
-        <Label htmlFor="date">Date *</Label>
+        <Label htmlFor="date_prevue">Date prévue</Label>
         <Input
-          id="date"
-          name="date"
+          id="date_prevue"
+          name="date_prevue"
           type="date"
-          required
-          defaultValue={intervention?.date ?? today}
+          defaultValue={intervention?.date_prevue ?? ""}
         />
+        <p className="text-xs text-muted-foreground">
+          Laisse vide si tu ne sais pas encore quand. Une date dépassée fait
+          apparaître l&apos;intervention comme en retard.
+        </p>
       </div>
 
       <div className="space-y-2">

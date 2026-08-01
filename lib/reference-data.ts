@@ -131,3 +131,32 @@ export const SYSTEM_PARTS: Record<BikeSystem, string[]> = {
     "Porte-bagages",
   ],
 };
+
+// Index inverse du référentiel : à partir du nom d'un organe, retrouver le ou
+// les systèmes auxquels il appartient. Le référentiel ne servait jusqu'ici qu'à
+// suggérer des titres une fois le système choisi ; l'utiliser dans ce sens-là
+// supprime un champ à la saisie.
+const partIndex = new Map<string, BikeSystem[]>();
+for (const [system, parts] of Object.entries(SYSTEM_PARTS) as [
+  BikeSystem,
+  string[],
+][]) {
+  for (const part of parts) {
+    partIndex.set(part, [...(partIndex.get(part) ?? []), system]);
+  }
+}
+
+/** Tous les organes du référentiel, dédoublonnés, pour l'aide à la saisie. */
+export const ALL_PARTS: string[] = Array.from(partIndex.keys()).sort((a, b) =>
+  a.localeCompare(b, "fr")
+);
+
+/**
+ * Les systèmes auxquels appartient un organe. Renvoie plusieurs candidats pour
+ * les organes ambigus (« Plaquettes » existe à l'avant et à l'arrière) : on les
+ * propose côte à côte plutôt que d'en deviner un, et un tableau vide pour un
+ * titre libre hors référentiel.
+ */
+export function systemsForPart(part: string): BikeSystem[] {
+  return partIndex.get(part.trim()) ?? [];
+}

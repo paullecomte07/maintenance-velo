@@ -1,101 +1,90 @@
 import { expect, test } from "@playwright/test";
 
-// Tests E2E — US#4 (Vélos) & US#5 (Cahier de changement de pièces)
+import {
+  addPiece,
+  createBike,
+  deleteBike,
+  openBike,
+  openIntervention,
+  testBikeName,
+} from "./support";
+
+// Tests E2E — US#4 (Vélos) & US#5 (Changements de pièces)
 // Scénario: Créer un vélo de test [US#4]
 //   Étant donné que je suis connecté
 //   Quand j'ajoute un vélo avec un nom et un prix d'achat
 //   Alors le vélo apparaît dans ma liste
-// Scénario: Ajouter un changement au cahier [US#5]
+// Scénario: Ajouter un changement de pièce [US#5]
 //   Étant donné qu'un vélo existe
 //   Quand j'ajoute un changement de pièce avec un titre
-//   Alors il apparaît dans le cahier de changement de pièces
+//   Alors il apparaît dans les pièces du chantier
 // Scénario: Modifier le changement [US#5]
 //   Étant donné qu'un changement existe
 //   Quand je modifie son titre
-//   Alors le nouveau titre apparaît dans le cahier
+//   Alors le nouveau titre apparaît dans le chantier
 // Scénario: Supprimer le changement [US#5]
 //   Étant donné qu'un changement existe
 //   Quand je le supprime et confirme
-//   Alors le cahier n'affiche plus aucun changement
+//   Alors le chantier n'affiche plus aucune pièce
 // Scénario: Supprimer le vélo de test (nettoyage) [US#4]
 //   Étant donné qu'un vélo de test existe
 //   Quand je le supprime et confirme
 //   Alors il n'apparaît plus dans ma liste
 //
-// Parcours complet : création d'un vélo de test, gestion du cahier de
-// changement de pièces, puis nettoyage (suppression du vélo). Les données
-// créées sont préfixées [TEST] et supprimées en fin de parcours — les données
-// réelles ne sont jamais touchées. L'encart Analyse n'est jamais déclenché
-// (appel API payant).
+// Version adaptée au parcours introduit par US#23/#24/#25 : les pièces vivent
+// sur la fiche du chantier, plus dans un cahier à plat sur la fiche vélo.
+// Les données créées sont préfixées [TEST] et supprimées en fin de parcours.
+// L'encart Analyse n'est jamais déclenché (appel API payant).
 test.describe.configure({ mode: "serial" });
 
-const bikeName = `[TEST] Vélo Playwright ${Date.now()}`;
-const eventTitle = "[TEST] Plaquettes de frein";
+const bikeName = testBikeName("Vélo Playwright");
+const chantier = "[TEST] Chantier cahier";
+const eventTitle = "[TEST] Plaquettes";
 const eventTitleEdited = "[TEST] Plaquettes de frein avant";
 
 test("US#4 – Créer un vélo de test", async ({ page }) => {
-  await page.goto("/bikes");
-  await page.getByRole("link", { name: "Ajouter un vélo" }).click();
-  await expect(page).toHaveURL(/\/bikes\/new/);
-
-  await page.getByLabel("Nom *").fill(bikeName);
-  await page.getByLabel("Prix d'achat (€) *").fill("100");
-  await page.getByRole("button", { name: "Ajouter le vélo" }).click();
-
-  await expect(page).toHaveURL(/\/bikes$/, { timeout: 15000 });
-  await expect(page.getByText(bikeName)).toBeVisible();
+  await createBike(page, bikeName);
 });
 
-test("US#5 – Ajouter un changement au cahier", async ({ page }) => {
-  await page.goto("/bikes");
-  await page.getByText(bikeName).click();
-  await expect(page).toHaveURL(/\/bikes\/[0-9a-f-]+$/);
+test("US#5 – Ajouter un changement de pièce", async ({ page }) => {
+  await openBike(page, bikeName);
 
-  await page.getByRole("button", { name: "Ajouter un changement" }).click();
-  const dialog = page.getByRole("dialog");
-  // Tout changement est rattaché à une intervention : on la crée à la volée.
-  await dialog
-    .getByRole("combobox")
-    .filter({ hasText: "Sélectionner une intervention" })
-    .click();
-  await page
-    .getByRole("option", { name: "Créer une nouvelle intervention" })
-    .click();
-  await dialog
-    .getByLabel("Nom de la nouvelle intervention *")
-    .fill("[TEST] Intervention du cahier");
-  await dialog.getByLabel("Titre *").fill(eventTitle);
-  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
+  await addPiece(page, {
+    titre: eventTitle,
+    systeme: "Système de freinage avant",
+    cout: "25",
+    nouveauChantier: chantier,
+  });
 
-  await expect(
-    page.getByRole("row").filter({ hasText: eventTitle })
-  ).toBeVisible({ timeout: 15000 });
+  await openIntervention(page, chantier);
+  await expect(page.getByText(eventTitle)).toBeVisible();
 });
 
 test("US#5 – Modifier le changement", async ({ page }) => {
-  await page.goto("/bikes");
-  await page.getByText(bikeName).click();
+  await openBike(page, bikeName);
+  await openIntervention(page, chantier);
 
   await page
-    .getByRole("row")
+    .getByTestId("piece")
     .filter({ hasText: eventTitle })
     .getByRole("button", { name: "Modifier" })
     .click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Titre *").fill(eventTitleEdited);
+  await dialog
+    .getByLabel(/Qu.est-ce que tu as changé/)
+    .fill(eventTitleEdited);
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(dialog).toBeHidden({ timeout: 15000 });
 
-  await expect(
-    page.getByRole("row").filter({ hasText: eventTitleEdited })
-  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(eventTitleEdited)).toBeVisible();
 });
 
 test("US#5 – Supprimer le changement", async ({ page }) => {
-  await page.goto("/bikes");
-  await page.getByText(bikeName).click();
+  await openBike(page, bikeName);
+  await openIntervention(page, chantier);
 
   await page
-    .getByRole("row")
+    .getByTestId("piece")
     .filter({ hasText: eventTitleEdited })
     .getByRole("button", { name: "Supprimer" })
     .click();
@@ -105,21 +94,10 @@ test("US#5 – Supprimer le changement", async ({ page }) => {
     .click();
 
   await expect(
-    page.getByText("Aucun changement de pièce enregistré.")
+    page.getByText("Aucune pièce enregistrée dans ce chantier.")
   ).toBeVisible({ timeout: 15000 });
 });
 
-test("US#4 – Supprimer le vélo de test (nettoyage)", async ({ page }) => {
-  await page.goto("/bikes");
-  await page.getByText(bikeName).click();
-  await expect(page).toHaveURL(/\/bikes\/[0-9a-f-]+$/);
-
-  await page.getByRole("button", { name: "Supprimer", exact: true }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Supprimer définitivement" })
-    .click();
-
-  await expect(page).toHaveURL(/\/bikes$/, { timeout: 15000 });
-  await expect(page.getByText(bikeName)).toBeHidden();
+test("US#4 – Supprimer le vélo de test", async ({ page }) => {
+  await deleteBike(page, bikeName);
 });

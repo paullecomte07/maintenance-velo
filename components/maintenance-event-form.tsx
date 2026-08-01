@@ -14,28 +14,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import {
+  ALL_PARTS,
   BIKE_SYSTEMS,
   CAUSE_TYPE_DESCRIPTIONS,
   CAUSE_TYPES,
   NATURE_CHANGEMENT_DESCRIPTIONS,
   NATURE_CHANGEMENT_TYPES,
-  SYSTEM_PARTS,
+  systemsForPart,
   type BikeSystem,
   type CauseType,
   type NatureChangementType,
 } from "@/lib/reference-data";
-import {
-  NEW_INTERVENTION,
-  type Intervention,
-  type MaintenanceEvent,
-} from "@/lib/types";
+import type { Intervention, MaintenanceEvent } from "@/lib/types";
 import type { EventFormState } from "@/app/(dashboard)/bikes/[id]/actions";
 
-function SubmitButton({ label }: { label: string }) {
+function SubmitButton({ label, disabled }: { label: string; disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" disabled={pending || disabled}>
       {pending ? "Enregistrement…" : label}
     </Button>
   );
@@ -45,11 +43,65 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString("fr-FR");
 }
 
+/**
+ * Groupe de puces à choix unique. Toutes les valeurs sont visibles d'un coup
+ * d'œil, et **aucune n'est pré-sélectionnée** : les anciennes valeurs par
+ * défaut produisaient silencieusement de la donnée fausse sur les trois champs
+ * dont dépend toute l'analyse.
+ */
+function ChipGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  hint,
+}: {
+  label: string;
+  options: Record<T, string>;
+  value: T | null;
+  onChange: (value: T) => void;
+  hint?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Label>{label} *</Label>
+        {value === null && (
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-destructive">
+            À choisir
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {(Object.entries(options) as [T, string][]).map(([key, text]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={value === key}
+            onClick={() => onChange(key)}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-xs transition-colors",
+              value === key
+                ? "border-primary bg-primary font-medium text-primary-foreground"
+                : "border-input bg-background text-muted-foreground hover:bg-muted"
+            )}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
 export function MaintenanceEventForm({
   action,
   event,
   interventions,
   fixedInterventionId,
+  openIntervention,
+  lastMileageKm,
   onSuccess,
 }: {
   action: (
@@ -58,25 +110,45 @@ export function MaintenanceEventForm({
   ) => Promise<EventFormState>;
   event?: MaintenanceEvent;
   interventions: Intervention[];
+  /** Saisie depuis la fiche d'un chantier : le rattachement est imposé. */
   fixedInterventionId?: string;
+  /** Chantier ouvert du vélo, s'il y en a un : rattachement automatique. */
+  openIntervention?: Intervention | null;
+  /** Dernier kilométrage connu, proposé par défaut. */
+  lastMileageKm?: number | null;
   onSuccess: () => void;
 }) {
   const [state, formAction] = useFormState<EventFormState, FormData>(action, {
     error: null,
     success: false,
   });
-  const [system, setSystem] = useState<BikeSystem>(
-    event?.system ?? "transmission"
+
+  const [title, setTitle] = useState(event?.title ?? "");
+  const [system, setSystem] = useState<BikeSystem | null>(
+    event?.system ?? null
   );
   const [natureChangement, setNatureChangement] =
-    useState<NatureChangementType>(event?.nature_changement ?? "entretien");
-  const [causeType, setCauseType] = useState<CauseType>(
-    event?.cause_type ?? "usure_normale"
+    useState<NatureChangementType | null>(event?.nature_changement ?? null);
+  const [causeType, setCauseType] = useState<CauseType | null>(
+    event?.cause_type ?? null
   );
+  // Rattachement : vide = « laisse le serveur décider » (chantier ouvert, ou
+  // ouverture d'un nouveau chantier). Renseigné = correction explicite.
   const [interventionId, setInterventionId] = useState(
     event?.intervention_id ?? ""
   );
+  const [editingAttachment, setEditingAttachment] = useState(false);
   const datalistId = useId();
+
+  // Les systèmes candidats pour l'organe saisi. Un seul candidat renseigne le
+  // système sans rien demander ; plusieurs les proposent côte à côte.
+  const candidates = systemsForPart(title);
+  const isAmbiguous = candidates.length > 1;
+
+  useEffect(() => {
+    const found = systemsForPart(title);
+    if (found.length === 1) setSystem(found[0]);
+  }, [title]);
 
   useEffect(() => {
     if (state.success) {
@@ -86,73 +158,131 @@ export function MaintenanceEventForm({
   }, [state, event, onSuccess]);
 
   const today = new Date().toISOString().slice(0, 10);
+  const attachedTo = fixedInterventionId
+    ? interventions.find((i) => i.id === fixedInterventionId)
+    : openIntervention;
+  // Un chantier existe déjà (imposé ou ouvert) : on ne demande pas de titre.
+  const needsNewChantier = !fixedInterventionId && !openIntervention && !event;
+  const incomplete = !system || !natureChangement || !causeType;
 
   return (
     <form action={formAction} className="space-y-4">
-      {fixedInterventionId ? (
+      {fixedInterventionId && (
         <input
           type="hidden"
           name="intervention_id"
           value={fixedInterventionId}
         />
-      ) : (
-        <div className="space-y-2">
-          <Label>Intervention *</Label>
+      )}
+      {!fixedInterventionId && interventionId && (
+        <input type="hidden" name="intervention_id" value={interventionId} />
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="title">Qu&apos;est-ce que tu as changé ? *</Label>
+        <Input
+          id="title"
+          name="title"
+          required
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Ex : Plaquettes"
+          list={datalistId}
+          autoFocus
+        />
+        <datalist id={datalistId}>
+          {ALL_PARTS.map((part) => (
+            <option key={part} value={part} />
+          ))}
+        </datalist>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Label>Système *</Label>
+          {system && candidates.length === 1 && (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Déduit de la pièce
+            </span>
+          )}
+          {!system && (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-destructive">
+              À choisir
+            </span>
+          )}
+        </div>
+        {isAmbiguous ? (
+          <>
+            <div className="flex flex-wrap gap-1.5">
+              {candidates.map((candidate) => (
+                <button
+                  key={candidate}
+                  type="button"
+                  aria-pressed={system === candidate}
+                  onClick={() => setSystem(candidate)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                    system === candidate
+                      ? "border-primary bg-primary font-medium text-primary-foreground"
+                      : "border-input bg-background text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {BIKE_SYSTEMS[candidate]}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cette pièce existe sur plusieurs systèmes : précise lequel.
+            </p>
+            <input type="hidden" name="system" value={system ?? ""} />
+          </>
+        ) : (
           <Select
-            name="intervention_id"
-            value={interventionId}
-            onValueChange={setInterventionId}
+            name="system"
+            value={system ?? undefined}
+            onValueChange={(v) => setSystem(v as BikeSystem)}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Sélectionner une intervention" />
+              <SelectValue placeholder="Sélectionner un système" />
             </SelectTrigger>
             <SelectContent>
-              {interventions.map((intervention) => (
-                <SelectItem key={intervention.id} value={intervention.id}>
-                  {intervention.title} — {formatDate(intervention.date)}
+              {Object.entries(BIKE_SYSTEMS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
                 </SelectItem>
               ))}
-              <SelectItem value={NEW_INTERVENTION}>
-                + Créer une nouvelle intervention
-              </SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            Chaque changement de pièce appartient à une intervention (la session
-            au cours de laquelle il a été réalisé).
-          </p>
-        </div>
-      )}
+        )}
+      </div>
 
-      {interventionId === NEW_INTERVENTION && (
-        <div className="grid gap-4 rounded-lg border p-3 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="new_intervention_title">
-              Nom de la nouvelle intervention *
-            </Label>
-            <Input
-              id="new_intervention_title"
-              name="new_intervention_title"
-              required
-              placeholder="Ex : Révision de printemps"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new_intervention_date">
-              Date de l&apos;intervention *
-            </Label>
-            <Input
-              id="new_intervention_date"
-              name="new_intervention_date"
-              type="date"
-              required
-              defaultValue={today}
-            />
-          </div>
-        </div>
-      )}
+      <ChipGroup
+        label="Nature du changement"
+        options={NATURE_CHANGEMENT_TYPES}
+        value={natureChangement}
+        onChange={setNatureChangement}
+        hint={
+          natureChangement
+            ? NATURE_CHANGEMENT_DESCRIPTIONS[natureChangement]
+            : undefined
+        }
+      />
+      <input
+        type="hidden"
+        name="nature_changement"
+        value={natureChangement ?? ""}
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <ChipGroup
+        label="Type de cause"
+        options={CAUSE_TYPES}
+        value={causeType}
+        onChange={setCauseType}
+        hint={causeType ? CAUSE_TYPE_DESCRIPTIONS[causeType] : undefined}
+      />
+      <input type="hidden" name="cause_type" value={causeType ?? ""} />
+
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="date">Date *</Label>
           <Input
@@ -164,110 +294,121 @@ export function MaintenanceEventForm({
           />
         </div>
         <div className="space-y-2">
-          <Label>Système *</Label>
-          <Select
-            name="system"
-            value={system}
-            onValueChange={(v) => setSystem(v as BikeSystem)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(BIKE_SYSTEMS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="title">Titre *</Label>
-        <Input
-          id="title"
-          name="title"
-          required
-          defaultValue={event?.title}
-          placeholder="Ex : Plaquettes de frein avant"
-          list={datalistId}
-        />
-        <datalist id={datalistId}>
-          {SYSTEM_PARTS[system].map((part) => (
-            <option key={part} value={part} />
-          ))}
-        </datalist>
-        <p className="text-xs text-muted-foreground">
-          Suggestions basées sur les organes du système sélectionné.
-        </p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Nature du changement *</Label>
-          <Select
-            name="nature_changement"
-            value={natureChangement}
-            onValueChange={(v) => setNatureChangement(v as NatureChangementType)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(NATURE_CHANGEMENT_TYPES).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            {NATURE_CHANGEMENT_DESCRIPTIONS[natureChangement]}
-          </p>
+          <Label htmlFor="cost">Coût (€)</Label>
+          <Input
+            id="cost"
+            name="cost"
+            type="number"
+            min="0"
+            step="0.01"
+            defaultValue={event?.cost ?? ""}
+            placeholder="Facultatif"
+          />
         </div>
         <div className="space-y-2">
-          <Label>Type de cause *</Label>
-          <Select
-            name="cause_type"
-            value={causeType}
-            onValueChange={(v) => setCauseType(v as CauseType)}
-          >
+          <Label htmlFor="mileage_km">Kilométrage</Label>
+          <Input
+            id="mileage_km"
+            name="mileage_km"
+            type="number"
+            min="0"
+            step="1"
+            defaultValue={event?.mileage_km ?? lastMileageKm ?? ""}
+            placeholder="km au compteur"
+          />
+        </div>
+      </div>
+
+      {needsNewChantier && (
+        <div className="space-y-2 rounded-lg border border-dashed p-3">
+          <Label htmlFor="new_intervention_title">
+            Tu démarres un nouveau chantier. Tu l&apos;appelles comment ? *
+          </Label>
+          <Input
+            id="new_intervention_title"
+            name="new_intervention_title"
+            required
+            placeholder="Ex : Révision de printemps"
+          />
+          <p className="text-xs text-muted-foreground">
+            Demandé une seule fois. Les pièces suivantes s&apos;y rattacheront
+            seules, même dans plusieurs jours.
+          </p>
+        </div>
+      )}
+
+      {attachedTo && !fixedInterventionId && !event && (
+        <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+          {editingAttachment ? (
+            <div className="space-y-2">
+              <Label>Rattacher à</Label>
+              <Select
+                value={interventionId || attachedTo.id}
+                onValueChange={setInterventionId}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {interventions.map((intervention) => (
+                    <SelectItem key={intervention.id} value={intervention.id}>
+                      {intervention.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              Rattaché à{" "}
+              <span className="font-medium text-foreground">
+                « {attachedTo.title} »
+              </span>
+              {attachedTo.started_at &&
+                `, ouvert depuis le ${formatDate(attachedTo.started_at)}`}
+              .{" "}
+              <button
+                type="button"
+                className="font-medium text-foreground underline underline-offset-4"
+                onClick={() => setEditingAttachment(true)}
+              >
+                Changer
+              </button>
+            </p>
+          )}
+        </div>
+      )}
+
+      {event && !fixedInterventionId && (
+        <div className="space-y-2">
+          <Label>Intervention de rattachement</Label>
+          <Select value={interventionId} onValueChange={setInterventionId}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Sélectionner une intervention" />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(CAUSE_TYPES).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
+              {interventions.map((intervention) => (
+                <SelectItem key={intervention.id} value={intervention.id}>
+                  {intervention.title}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            {CAUSE_TYPE_DESCRIPTIONS[causeType]}
-          </p>
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="cost">Coût (€)</Label>
-        <Input
-          id="cost"
-          name="cost"
-          type="number"
-          min="0"
-          step="0.01"
-          defaultValue={event?.cost ?? ""}
-          placeholder="Laisser vide si inconnu"
-        />
-      </div>
+      )}
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
 
-      <div className="flex justify-end">
-        <SubmitButton label={event ? "Enregistrer" : "Ajouter"} />
+      <div className="flex items-center justify-end gap-3">
+        {incomplete && (
+          <p className="text-xs text-muted-foreground">
+            Choisis le système, la nature et la cause pour enregistrer.
+          </p>
+        )}
+        <SubmitButton
+          label={event ? "Enregistrer" : "Ajouter"}
+          disabled={incomplete}
+        />
       </div>
     </form>
   );
