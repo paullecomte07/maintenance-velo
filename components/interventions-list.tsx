@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import { createIntervention } from "@/app/(dashboard)/bikes/[id]/interventions/actions";
 import { InterventionForm } from "@/components/intervention-form";
@@ -98,6 +99,51 @@ function InterventionRow({
   );
 }
 
+/**
+ * Rappel de clôture d'un chantier resté sans activité. Il ne ferme rien et ne
+ * se rejette pas : ajouter une pièce le fait disparaître de lui-même, puisqu'il
+ * se fonde sur la date de dernière activité.
+ */
+function StaleReminder({
+  days,
+  lastActivity,
+  onClose,
+}: {
+  days: number;
+  lastActivity: string | null;
+  onClose: () => Promise<{ error: string | null }>;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <div className="mb-2 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/40 p-3 text-sm">
+      <p className="text-muted-foreground">
+        Ce chantier est ouvert depuis{" "}
+        <span className="font-medium text-foreground">{days} jours</span>
+        {lastActivity
+          ? `, dernière pièce le ${formatDate(lastActivity)}`
+          : ", sans aucune pièce"}
+        .
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-2"
+        disabled={isPending}
+        onClick={() =>
+          startTransition(async () => {
+            const { error } = await onClose();
+            if (error) toast.error(error);
+            else toast.success("Chantier clôturé.");
+          })
+        }
+      >
+        {isPending ? "Clôture…" : "Le clôturer"}
+      </Button>
+    </div>
+  );
+}
+
 export function InterventionsList({
   bikeId,
   enCours,
@@ -105,6 +151,8 @@ export function InterventionsList({
   terminees,
   stats,
   ranges,
+  staleReminder,
+  onCloseStale,
 }: {
   bikeId: string;
   enCours: Intervention[];
@@ -112,6 +160,9 @@ export function InterventionsList({
   terminees: Intervention[];
   stats: InterventionStats;
   ranges: Record<string, { first: string | null; last: string | null }>;
+  /** Renseigné quand le chantier ouvert dort depuis plus d'un mois. */
+  staleReminder?: { days: number; lastActivity: string | null } | null;
+  onCloseStale?: () => Promise<{ error: string | null }>;
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const emptyStat = { count: 0, totalCost: 0 };
@@ -144,6 +195,13 @@ export function InterventionsList({
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {group.label} ({group.items.length})
               </h3>
+              {group.key === "en-cours" && staleReminder && onCloseStale && (
+                <StaleReminder
+                  days={staleReminder.days}
+                  lastActivity={staleReminder.lastActivity}
+                  onClose={onCloseStale}
+                />
+              )}
               {group.items.length === 0 ? (
                 <p className="text-sm text-muted-foreground">—</p>
               ) : (

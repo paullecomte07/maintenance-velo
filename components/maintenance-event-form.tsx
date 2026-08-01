@@ -242,7 +242,8 @@ export function MaintenanceEventForm({
             value={system ?? undefined}
             onValueChange={(v) => setSystem(v as BikeSystem)}
           >
-            <SelectTrigger>
+            {/* Le Select Radix n'est pas relié à son Label : on le nomme. */}
+            <SelectTrigger aria-label="Système">
               <SelectValue placeholder="Sélectionner un système" />
             </SelectTrigger>
             <SelectContent>
@@ -346,7 +347,7 @@ export function MaintenanceEventForm({
                 value={interventionId || attachedTo.id}
                 onValueChange={setInterventionId}
               >
-                <SelectTrigger>
+                <SelectTrigger aria-label="Rattacher à">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -383,7 +384,7 @@ export function MaintenanceEventForm({
         <div className="space-y-2">
           <Label>Intervention de rattachement</Label>
           <Select value={interventionId} onValueChange={setInterventionId}>
-            <SelectTrigger>
+            <SelectTrigger aria-label="Intervention de rattachement">
               <SelectValue placeholder="Sélectionner une intervention" />
             </SelectTrigger>
             <SelectContent>

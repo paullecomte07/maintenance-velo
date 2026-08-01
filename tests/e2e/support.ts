@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 // Helpers partagés par les parcours US#23 / US#24 / US#25. Chaque spec crée son
 // propre vélo préfixé [TEST] et le supprime en fin de parcours : les données
@@ -56,9 +56,27 @@ export type PieceInput = {
   date?: string;
   /** Nom du chantier à ouvrir, quand aucun n'est en cours. */
   nouveauChantier?: string;
-  /** Système à préciser quand la pièce existe sur plusieurs systèmes. */
+  /**
+   * Système à choisir. Obligatoire dès que le titre n'appartient pas au
+   * référentiel des organes — c'est le cas de tous nos titres préfixés
+   * [TEST] — puisque le système ne peut alors pas être déduit.
+   */
   systeme?: string;
 };
+
+/**
+ * Choisit le système, que le formulaire l'affiche en puces (organe ambigu,
+ * présent sur plusieurs systèmes) ou en liste déroulante (cas général).
+ */
+export async function pickSystem(page: Page, dialog: Locator, label: string) {
+  const chip = dialog.getByRole("button", { name: label, exact: true });
+  if ((await chip.count()) > 0) {
+    await chip.click();
+    return;
+  }
+  await dialog.getByRole("combobox", { name: "Système" }).click();
+  await page.getByRole("option", { name: label, exact: true }).click();
+}
 
 /**
  * Remplit le formulaire de saisie rapide, déjà ouvert, et valide.
@@ -71,7 +89,7 @@ export async function fillPiece(page: Page, piece: PieceInput) {
   await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill(piece.titre);
 
   if (piece.systeme) {
-    await dialog.getByRole("button", { name: piece.systeme }).click();
+    await pickSystem(page, dialog, piece.systeme);
   }
 
   await dialog

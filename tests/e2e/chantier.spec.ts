@@ -7,6 +7,7 @@ import {
   isoDaysAgo,
   openBike,
   openIntervention,
+  pickSystem,
   testBikeName,
 } from "./support";
 
@@ -78,6 +79,7 @@ test("US#23 – Nommer le chantier à son ouverture", async ({ page }) => {
   ).toBeVisible();
 
   await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill(piece1);
+  await pickSystem(page, dialog, "Transmission");
   await dialog.getByRole("button", { name: "Entretien", exact: true }).click();
   await dialog
     .getByRole("button", { name: "Usure normale", exact: true })
@@ -106,6 +108,7 @@ test("US#23 – Rattacher une pièce à un chantier ouvert trois jours plus tôt
   ).toBeHidden();
 
   await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill(piece2);
+  await pickSystem(page, dialog, "Transmission");
   await dialog.getByRole("button", { name: "Réparation", exact: true }).click();
   await dialog
     .getByRole("button", { name: "Usure normale", exact: true })
@@ -115,8 +118,12 @@ test("US#23 – Rattacher une pièce à un chantier ouvert trois jours plus tôt
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
   await openIntervention(page, chantier);
-  await expect(page.getByText(piece1)).toBeVisible();
-  await expect(page.getByText(piece2)).toBeVisible();
+  await expect(
+    page.getByTestId("piece").filter({ hasText: piece1 })
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("piece").filter({ hasText: piece2 })
+  ).toBeVisible();
   await expect(page.getByText("En cours").first()).toBeVisible();
 });
 
@@ -170,8 +177,12 @@ test("US#23 – Renommer un chantier en cours", async ({ page }) => {
     page.getByRole("heading", { name: chantierRenomme })
   ).toBeVisible();
   // Les pièces rattachées le restent.
-  await expect(page.getByText(piece1)).toBeVisible();
-  await expect(page.getByText(piece2)).toBeVisible();
+  await expect(
+    page.getByTestId("piece").filter({ hasText: piece1 })
+  ).toBeVisible();
+  await expect(
+    page.getByTestId("piece").filter({ hasText: piece2 })
+  ).toBeVisible();
 });
 
 test("US#23 – Déplacer une pièce vers une autre intervention", async ({
@@ -194,7 +205,9 @@ test("US#23 – Déplacer une pièce vers une autre intervention", async ({
     .click();
 
   dialog = page.getByRole("dialog");
-  await dialog.getByRole("combobox").click();
+  await dialog
+    .getByRole("combobox", { name: "Intervention de destination" })
+    .click();
   await page.getByRole("option", { name: autreChantier }).click();
   await dialog.getByRole("button", { name: "Déplacer" }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });

@@ -136,7 +136,7 @@ function MoveEventDialog({
           </p>
         ) : (
           <Select value={target} onValueChange={setTarget}>
-            <SelectTrigger>
+            <SelectTrigger aria-label="Intervention de destination">
               <SelectValue placeholder="Sélectionner une intervention" />
             </SelectTrigger>
             <SelectContent>

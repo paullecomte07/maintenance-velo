@@ -53,7 +53,12 @@ const piece = "[TEST] Chaîne";
 /** Ouvre un chantier avec une pièce, puis le clôture. */
 async function chantierTermine(page: Page, titre: string) {
   await openBike(page, bikeName);
-  await addPiece(page, { titre: `${piece} ${titre}`, cout: "10", nouveauChantier: titre });
+  await addPiece(page, {
+    titre: `${piece} ${titre}`,
+    systeme: "Transmission",
+    cout: "10",
+    nouveauChantier: titre,
+  });
   await openIntervention(page, titre);
   await page.getByRole("button", { name: "Clôturer" }).click();
   await expect(page.getByRole("button", { name: "Clôturer" })).toBeHidden({
@@ -81,7 +86,12 @@ test("US#25 – Les trois groupes d'interventions sont visibles ensemble", async
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
   // …et une en cours.
-  await addPiece(page, { titre: piece, cout: "30", nouveauChantier: enCours });
+  await addPiece(page, {
+    titre: piece,
+    systeme: "Transmission",
+    cout: "30",
+    nouveauChantier: enCours,
+  });
 
   await expect(group(page, "En cours").getByText(enCours)).toBeVisible();
   await expect(group(page, "À venir").getByText(aVenir)).toBeVisible();

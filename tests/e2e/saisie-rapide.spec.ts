@@ -6,6 +6,7 @@ import {
   deleteBike,
   openBike,
   openIntervention,
+  pickSystem,
   testBikeName,
 } from "./support";
 
@@ -83,14 +84,23 @@ test("US#24 – Impossible d'enregistrer sans nature ni cause", async ({
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill("[TEST] Chaîne");
 
-  // Aucune valeur pré-cochée sur les deux champs sémantiques.
-  await expect(dialog.getByText("À choisir")).toHaveCount(2);
-  await expect(
-    dialog.getByRole("button", { name: "Entretien", exact: true })
-  ).toHaveAttribute("aria-pressed", "false");
-  await expect(
-    dialog.getByRole("button", { name: "Usure normale", exact: true })
-  ).toHaveAttribute("aria-pressed", "false");
+  // Aucune valeur pré-cochée : toutes les puces de nature et de cause sont
+  // dans l'état non sélectionné.
+  for (const nature of [
+    "Inspection",
+    "Entretien",
+    "Réparation",
+    "Remise à neuf",
+  ]) {
+    await expect(
+      dialog.getByRole("button", { name: nature, exact: true })
+    ).toHaveAttribute("aria-pressed", "false");
+  }
+  for (const cause of ["Usure normale", "Usure prématurée", "Accident"]) {
+    await expect(
+      dialog.getByRole("button", { name: cause, exact: true })
+    ).toHaveAttribute("aria-pressed", "false");
+  }
 
   // Et l'enregistrement reste impossible.
   await expect(
@@ -108,7 +118,9 @@ test("US#24 – Le système se déduit de la pièce choisie", async ({ page }) =
     .fill("Cassette / roue libre");
 
   await expect(dialog.getByText("Déduit de la pièce")).toBeVisible();
-  await expect(dialog.getByRole("combobox")).toContainText("Transmission");
+  await expect(
+    dialog.getByRole("combobox", { name: "Système" })
+  ).toContainText("Transmission");
 });
 
 test("US#24 – Une pièce ambiguë propose les systèmes concernés", async ({
@@ -138,6 +150,7 @@ test("US#24 – Enregistrer une pièce quand aucun chantier n'est ouvert", async
 
   await addPiece(page, {
     titre: "[TEST] Chaîne",
+    systeme: "Transmission",
     cout: "30",
     nouveauChantier: chantier,
   });
@@ -166,7 +179,10 @@ test("US#24 – Enregistrer une pièce sans en connaître le coût", async ({
 }) => {
   await openBike(page, bikeName);
 
-  await addPiece(page, { titre: "[TEST] Câbles et gaines de vitesses" });
+  await addPiece(page, {
+    titre: "[TEST] Câbles et gaines de vitesses",
+    systeme: "Transmission",
+  });
 
   await openIntervention(page, chantier);
   const ligne = page
@@ -188,6 +204,7 @@ test("US#24 – Corriger le rattachement proposé", async ({ page }) => {
   await page.getByRole("button", { name: "Ajouter une pièce" }).click();
   dialog = page.getByRole("dialog");
   await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill("[TEST] Pneus");
+  await pickSystem(page, dialog, "Roue arrière");
   await dialog.getByRole("button", { name: "Entretien", exact: true }).click();
   await dialog
     .getByRole("button", { name: "Usure normale", exact: true })
@@ -195,7 +212,7 @@ test("US#24 – Corriger le rattachement proposé", async ({ page }) => {
 
   // On corrige le rattachement proposé.
   await dialog.getByRole("button", { name: "Changer" }).click();
-  await dialog.getByRole("combobox").last().click();
+  await dialog.getByRole("combobox", { name: "Rattacher à" }).click();
   await page.getByRole("option", { name: autreChantier }).click();
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });

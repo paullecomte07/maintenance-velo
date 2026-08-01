@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { deleteBike } from "../actions";
+import { closeIntervention } from "./interventions/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +96,34 @@ export default async function BikePage({
   const openIntervention = enCours[0] ?? null;
   const deleteAction = deleteBike.bind(null, bike.id);
 
+  // Rappel de clôture : un chantier qui dort depuis plus d'un mois est
+  // probablement fini. On le signale sans jamais le fermer d'office — en usage
+  // loisir, un chantier peut légitimement rester ouvert des semaines.
+  const STALE_AFTER_DAYS = 30;
+  let staleReminder: { days: number; lastActivity: string | null } | null = null;
+  let closeStaleAction: (() => Promise<{ error: string | null }>) | undefined;
+
+  if (openIntervention) {
+    const lastActivity =
+      ranges[openIntervention.id]?.last ?? openIntervention.started_at;
+    if (lastActivity) {
+      const days = Math.floor(
+        (Date.now() - new Date(lastActivity).getTime()) / 86_400_000
+      );
+      if (days > STALE_AFTER_DAYS) {
+        staleReminder = {
+          days,
+          lastActivity: ranges[openIntervention.id]?.last ?? null,
+        };
+        closeStaleAction = closeIntervention.bind(
+          null,
+          openIntervention.id,
+          bike.id
+        );
+      }
+    }
+  }
+
   const identity: [string, React.ReactNode][] = [
     ["Marque", bike.brand ?? "—"],
     ["Modèle", bike.model ?? "—"],
@@ -148,6 +177,8 @@ export default async function BikePage({
         terminees={terminees}
         stats={stats}
         ranges={ranges}
+        staleReminder={staleReminder}
+        onCloseStale={closeStaleAction}
       />
 
       {/* Repliée par défaut : la fiche vélo sert d'abord à voir où en sont les
