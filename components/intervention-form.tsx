@@ -5,9 +5,11 @@ import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
 import { ChipGroup } from "@/components/chip-group";
+import { DictationButton } from "@/components/dictation-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   INTERVENTION_CAUSE_DESCRIPTIONS,
   INTERVENTION_CAUSES,
@@ -50,6 +52,15 @@ export function InterventionForm({
   const [cause, setCause] = useState<InterventionCause | null>(
     intervention?.cause ?? null
   );
+  const [note, setNote] = useState(intervention?.note ?? "");
+
+  /**
+   * La dictée **complète** la note : la transcription se trompe sur le
+   * vocabulaire du cycle, et on dicte volontiers en plusieurs fois.
+   */
+  function ajouterAuTexte(texte: string) {
+    setNote((actuel) => (actuel ? `${actuel.trimEnd()} ${texte}` : texte));
+  }
   // Seule exception à l'obligation : corriger une intervention importée, dont
   // la cause est inconnue et le restera. L'exiger reviendrait à en faire
   // inventer une — le défaut même que cette refonte corrige.
@@ -108,12 +119,19 @@ export function InterventionForm({
         </p>
       </div>
 
+      {/* Multiligne : on y dicte volontiers plusieurs phrases, et une seule
+          ligne les rendrait illisibles. */}
       <div className="space-y-2">
-        <Label htmlFor="note">Note</Label>
-        <Input
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="note">Note</Label>
+          <DictationButton onTranscript={ajouterAuTexte} />
+        </div>
+        <Textarea
           id="note"
           name="note"
-          defaultValue={intervention?.note ?? ""}
+          rows={3}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
           placeholder="Remarques sur la session (facultatif)"
         />
       </div>
