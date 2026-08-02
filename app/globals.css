@@ -2,56 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 }
+
 @layer base {
+  /*
+   * Palette du projet, reprise de la planche `00-fondations` (Claude Design).
+   *
+   * Les valeurs sont des **canaux RVB séparés par des espaces**, pas des
+   * hexadécimaux : c'est ce que réclame `rgb(var(--x) / <alpha-value>)` dans
+   * la config Tailwind, sans quoi tous les modificateurs d'opacité du projet
+   * (`bg-muted/50`, `hover:bg-primary/90`…) cesseraient silencieusement de
+   * fonctionner. L'hexadécimal est rappelé en commentaire pour rester lisible.
+   *
+   * Règle qui vaut pour tout ce fichier : **la couleur ne porte jamais le sens
+   * seule**. Chaque pastille colorée affiche aussi son libellé.
+   */
   :root {
-    --background: 1 0 0;
-    --foreground: 0.141 0.005 285.823;
-    --card: 1 0 0;
-    --card-foreground: 0.141 0.005 285.823;
-    --popover: 1 0 0;
-    --popover-foreground: 0.141 0.005 285.823;
-    --primary: 0.21 0.006 285.885;
-    --primary-foreground: 0.985 0 0;
-    --secondary: 0.967 0.001 286.375;
-    --secondary-foreground: 0.21 0.006 285.885;
-    --muted: 0.967 0.001 286.375;
-    --muted-foreground: 0.552 0.016 285.938;
-    --accent: 0.967 0.001 286.375;
-    --accent-foreground: 0.21 0.006 285.885;
-    --destructive: 0.577 0.245 27.325;
-    --border: 0.92 0.004 286.32;
-    --input: 0.92 0.004 286.32;
-    --ring: 0.705 0.015 286.067;
-    --chart-1: 0.871 0.006 286.286;
-    --chart-2: 0.552 0.016 285.938;
-    --chart-3: 0.442 0.017 285.786;
-    --chart-4: 0.37 0.013 285.805;
-    --chart-5: 0.274 0.006 286.033;
+    /* Surfaces et encres */
+    --background: 249 249 247; /* #f9f9f7 — fond de page */
+    --foreground: 11 11 11; /* #0b0b0b — encre principale */
+    --card: 252 252 251; /* #fcfcfb — fond de carte, à peine détaché */
+    --card-foreground: 11 11 11; /* #0b0b0b */
+    --popover: 252 252 251; /* #fcfcfb */
+    --popover-foreground: 11 11 11; /* #0b0b0b */
+
+    /* Accent : une seule teinte, portée par l'action principale et les liens */
+    --primary: 28 92 171; /* #1c5cab */
+    --primary-foreground: 255 255 255; /* #ffffff — 6,63:1 */
+    --accent: 205 226 251; /* #cde2fb — fond doux, survols */
+    --accent-foreground: 23 83 156; /* #17539c — 5,76:1 sur l'accent doux */
+
+    /* Neutres */
+    --secondary: 241 240 236; /* #f1f0ec */
+    --secondary-foreground: 11 11 11; /* #0b0b0b */
+    --muted: 241 240 236; /* #f1f0ec */
+    /*
+     * L'encre secondaire est #52514e, pas le #898781 de la planche : ce
+     * dernier est prévu pour les axes d'un graphe, et tombe à 3,3:1 sur du
+     * texte de 12 px — sous le seuil AA.
+     */
+    --muted-foreground: 82 81 78; /* #52514e — 7,53:1 */
+    --border: 225 224 217; /* #e1e0d9 — séparateurs, purement décoratifs */
+    /*
+     * La bordure d'un champ identifie un contrôle : elle doit atteindre 3:1
+     * (WCAG 1.4.11), là où un séparateur n'a aucun seuil. Le #c3c2b7 de la
+     * planche plafonne à 1,75:1 sur une carte — d'où ce ton plus soutenu.
+     */
+    --input: 148 146 134; /* #949286 — 3,05:1 */
+    --ring: 28 92 171; /* #1c5cab */
+
+    /*
+     * Sens. Ces quatre familles sont réservées à la signification et ne
+     * servent jamais de décoration ni de couleur de série.
+     */
+    --destructive: 208 59 59; /* #d03b3b — bouton plein de suppression */
+    --destructive-foreground: 255 255 255; /* #ffffff — 4,80:1 */
+
+    --ok: 223 243 223; /* #dff3df */
+    --ok-foreground: 18 97 15; /* #12610f — 6,57:1 */
+    --warn: 253 240 211; /* #fdf0d3 */
+    --warn-foreground: 125 81 0; /* #7d5100 — 6,09:1 */
+    --info: 223 234 253; /* #dfeafd */
+    --info-foreground: 23 83 156; /* #17539c — 6,29:1 */
+    --alert: 251 227 227; /* #fbe3e3 */
+    --alert-foreground: 140 32 32; /* #8c2020 — 7,34:1 */
+
+    /*
+     * Séries du futur graphe coût vs valeur (#8). Réservées ici pour qu'aucune
+     * pastille de sens ne vienne les occuper entre-temps.
+     */
+    --chart-cost: 42 120 214; /* #2a78d6 */
+    --chart-value: 235 104 52; /* #eb6834 */
+
     --radius: 0.5rem;
-    --sidebar: 0.985 0 0;
-    --sidebar-foreground: 0.141 0.005 285.823;
-    --sidebar-primary: 0.21 0.006 285.885;
-    --sidebar-primary-foreground: 0.985 0 0;
-    --sidebar-accent: 0.967 0.001 286.375;
-    --sidebar-accent-foreground: 0.21 0.006 285.885;
-    --sidebar-border: 0.92 0.004 286.32;
-    --sidebar-ring: 0.705 0.015 286.067;
   }
 }
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground;
   }
 }
