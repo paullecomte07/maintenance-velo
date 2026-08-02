@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { toast } from "sonner";
 
@@ -19,25 +19,40 @@ import { cn } from "@/lib/utils";
 import {
   ALL_PARTS,
   BIKE_SYSTEMS,
-  CAUSE_TYPE_DESCRIPTIONS,
-  CAUSE_TYPES,
+  ETAT_CONSTATE_DESCRIPTIONS,
+  ETATS_CONSTATES,
   INTERVENTION_CAUSE_DESCRIPTIONS,
   INTERVENTION_CAUSES,
   NATURE_CHANGEMENT_DESCRIPTIONS,
   NATURE_CHANGEMENT_TYPES,
   systemsForPart,
   type BikeSystem,
-  type CauseType,
+  type EtatConstate,
   type InterventionCause,
   type NatureChangementType,
 } from "@/lib/reference-data";
 import type { Intervention, MaintenanceEvent } from "@/lib/types";
 import type { EventFormState } from "@/app/(dashboard)/bikes/[id]/actions";
 
-function SubmitButton({ label, disabled }: { label: string; disabled: boolean }) {
+function SubmitButton({
+  label,
+  disabled,
+  variant,
+  onClick,
+}: {
+  label: string;
+  disabled: boolean;
+  variant?: "default" | "outline";
+  onClick?: () => void;
+}) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending || disabled}>
+    <Button
+      type="submit"
+      variant={variant}
+      disabled={pending || disabled}
+      onClick={onClick}
+    >
       {pending ? "Enregistrement…" : label}
     </Button>
   );
@@ -81,10 +96,10 @@ export function MaintenanceEventForm({
   );
   const [natureChangement, setNatureChangement] =
     useState<NatureChangementType | null>(event?.nature_changement ?? null);
-  const [causeType, setCauseType] = useState<CauseType | null>(
-    event?.cause_type ?? null
+  const [etatConstate, setEtatConstate] = useState<EtatConstate | null>(
+    event?.etat_constate ?? null
   );
-  // Cause du *chantier*, demandée uniquement quand cette pièce en ouvre un.
+  // Cause du *chantier*, demandée uniquement quand cette action en ouvre un.
   const [interventionCause, setInterventionCause] =
     useState<InterventionCause | null>(null);
   // Rattachement : vide = « laisse le serveur décider » (chantier ouvert, ou
@@ -94,6 +109,21 @@ export function MaintenanceEventForm({
   );
   const [editingAttachment, setEditingAttachment] = useState(false);
   const datalistId = useId();
+
+  const formRef = useRef<HTMLFormElement>(null);
+  // « Enregistrer et ajouter une autre » : l'intention est portée par un ref
+  // plutôt qu'un state, parce qu'elle est lue dans l'effet de succès et ne doit
+  // déclencher aucun rendu.
+  const continuer = useRef(false);
+  /**
+   * Chantier ouvert par la première action de la série. Sans lui, la seconde
+   * action redemanderait un titre et tenterait d'ouvrir un *second* chantier —
+   * refusé par l'index unique « un seul chantier ouvert par vélo ».
+   */
+  const [chantierOuvert, setChantierOuvert] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
   // Les systèmes candidats pour l'organe saisi. Un seul candidat renseigne le
   // système sans rien demander ; plusieurs les proposent côte à côte.
@@ -106,26 +136,47 @@ export function MaintenanceEventForm({
   }, [title]);
 
   useEffect(() => {
-    if (state.success) {
-      toast.success(event ? "Changement modifié." : "Changement ajouté.");
-      onSuccess();
+    if (!state.success) return;
+
+    if (continuer.current) {
+      // On reste dans le formulaire pour la pièce suivante du même chantier.
+      continuer.current = false;
+      if (state.intervention) setChantierOuvert(state.intervention);
+      setTitle("");
+      setSystem(null);
+      setNatureChangement(null);
+      setEtatConstate(null);
+      formRef.current?.reset();
+      toast.success("Action enregistrée. À la suivante.");
+      return;
     }
+
+    toast.success(event ? "Action modifiée." : "Action ajoutée.");
+    onSuccess();
   }, [state, event, onSuccess]);
 
   const today = new Date().toISOString().slice(0, 10);
-  const attachedTo = fixedInterventionId
-    ? interventions.find((i) => i.id === fixedInterventionId)
-    : openIntervention;
-  // Un chantier existe déjà (imposé ou ouvert) : on ne demande pas de titre.
-  const needsNewChantier = !fixedInterventionId && !openIntervention && !event;
+  // Le chantier ouvert par l'action précédente n'est pas encore dans
+  // `interventions` : cette liste vient du serveur et date de l'ouverture du
+  // formulaire. On l'affiche à partir de ce que l'action a renvoyé.
+  const attachedTo: Pick<Intervention, "id" | "title" | "started_at"> | null =
+    fixedInterventionId
+      ? (interventions.find((i) => i.id === fixedInterventionId) ?? null)
+      : chantierOuvert
+        ? { ...chantierOuvert, started_at: null }
+        : (openIntervention ?? null);
+  // Un chantier existe déjà (imposé, ouvert, ou ouvert par l'action
+  // précédente de cette série) : on ne demande ni titre ni cause.
+  const needsNewChantier =
+    !fixedInterventionId && !openIntervention && !chantierOuvert && !event;
   const incomplete =
     !system ||
     !natureChangement ||
-    !causeType ||
+    !etatConstate ||
     (needsNewChantier && !interventionCause);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form ref={formRef} action={formAction} className="space-y-4">
       {fixedInterventionId && (
         <input
           type="hidden"
@@ -133,12 +184,36 @@ export function MaintenanceEventForm({
           value={fixedInterventionId}
         />
       )}
-      {!fixedInterventionId && interventionId && (
-        <input type="hidden" name="intervention_id" value={interventionId} />
+      {!fixedInterventionId && (interventionId || chantierOuvert) && (
+        <input
+          type="hidden"
+          name="intervention_id"
+          value={interventionId || chantierOuvert?.id || ""}
+        />
       )}
 
+      {/* L'action d'abord : c'est elle l'unité de saisie. Ouvrir sur la pièce
+          rendait l'inspection absurde — on n'a rien changé, et il fallait
+          pourtant décrire un changement. */}
+      <ChipGroup
+        label="Qu'est-ce que tu as fait ?"
+        options={NATURE_CHANGEMENT_TYPES}
+        value={natureChangement}
+        onChange={setNatureChangement}
+        hint={
+          natureChangement
+            ? NATURE_CHANGEMENT_DESCRIPTIONS[natureChangement]
+            : undefined
+        }
+      />
+      <input
+        type="hidden"
+        name="nature_changement"
+        value={natureChangement ?? ""}
+      />
+
       <div className="space-y-2">
-        <Label htmlFor="title">Qu&apos;est-ce que tu as changé ? *</Label>
+        <Label htmlFor="title">Sur quelle pièce ? *</Label>
         <Input
           id="title"
           name="title"
@@ -147,7 +222,6 @@ export function MaintenanceEventForm({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Ex : Plaquettes"
           list={datalistId}
-          autoFocus
         />
         <datalist id={datalistId}>
           {ALL_PARTS.map((part) => (
@@ -216,31 +290,17 @@ export function MaintenanceEventForm({
         )}
       </div>
 
+      {/* L'état est une **observation**, pas une intention : il ne se déduit
+          jamais de la cause du chantier. Une casse d'usure peut très bien
+          contenir des pièces trouvées en bon état. */}
       <ChipGroup
-        label="Nature du changement"
-        options={NATURE_CHANGEMENT_TYPES}
-        value={natureChangement}
-        onChange={setNatureChangement}
-        hint={
-          natureChangement
-            ? NATURE_CHANGEMENT_DESCRIPTIONS[natureChangement]
-            : undefined
-        }
+        label="Dans quel état tu l'as trouvée ?"
+        options={ETATS_CONSTATES}
+        value={etatConstate}
+        onChange={setEtatConstate}
+        hint={etatConstate ? ETAT_CONSTATE_DESCRIPTIONS[etatConstate] : undefined}
       />
-      <input
-        type="hidden"
-        name="nature_changement"
-        value={natureChangement ?? ""}
-      />
-
-      <ChipGroup
-        label="Type de cause"
-        options={CAUSE_TYPES}
-        value={causeType}
-        onChange={setCauseType}
-        hint={causeType ? CAUSE_TYPE_DESCRIPTIONS[causeType] : undefined}
-      />
-      <input type="hidden" name="cause_type" value={causeType ?? ""} />
+      <input type="hidden" name="etat_constate" value={etatConstate ?? ""} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
@@ -292,13 +352,13 @@ export function MaintenanceEventForm({
               placeholder="Ex : Révision de printemps"
             />
             <p className="text-xs text-muted-foreground">
-              Demandé une seule fois. Les pièces suivantes s&apos;y rattacheront
+              Demandé une seule fois. Les actions suivantes s&apos;y rattacheront
               seules, même dans plusieurs jours.
             </p>
           </div>
 
           {/* La cause vaut pour tout le chantier : elle n'est demandée qu'ici,
-              jamais sur les pièces suivantes. */}
+              jamais sur les actions suivantes. */}
           <ChipGroup
             label="Pourquoi ce chantier ?"
             options={INTERVENTION_CAUSES}
@@ -380,13 +440,25 @@ export function MaintenanceEventForm({
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
 
-      <div className="flex items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
         {incomplete && (
           <p className="text-xs text-muted-foreground">
             {needsNewChantier
-              ? "Choisis le système, la nature, la cause de la pièce et celle du chantier pour enregistrer."
-              : "Choisis le système, la nature et la cause pour enregistrer."}
+              ? "Choisis l'action, le système, l'état et la cause du chantier pour enregistrer."
+              : "Choisis l'action, le système et l'état pour enregistrer."}
           </p>
+        )}
+        {/* Un chantier compte 1 à 4 pièces : sans ce second bouton, chacune
+            imposerait un aller-retour par la navigation. */}
+        {!event && (
+          <SubmitButton
+            label="Enregistrer et ajouter une autre action"
+            variant="outline"
+            disabled={incomplete}
+            onClick={() => {
+              continuer.current = true;
+            }}
+          />
         )}
         <SubmitButton
           label={event ? "Enregistrer" : "Ajouter"}

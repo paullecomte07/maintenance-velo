@@ -64,7 +64,7 @@ export function MaintenanceAnalysis({
       <CardContent className="space-y-3">
         {!hasEvents && (
           <p className="text-sm text-muted-foreground">
-            Ajoute au moins un changement de pièce pour lancer une analyse.
+            Ajoute au moins une action pour lancer une analyse.
           </p>
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}

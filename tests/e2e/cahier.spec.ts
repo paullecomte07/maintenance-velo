@@ -65,13 +65,13 @@ test("US#5 – Modifier le changement", async ({ page }) => {
   await openIntervention(page, chantier);
 
   await page
-    .getByTestId("piece")
+    .getByTestId("action")
     .filter({ hasText: eventTitle })
     .getByRole("button", { name: "Modifier" })
     .click();
   const dialog = page.getByRole("dialog");
   await dialog
-    .getByLabel(/Qu.est-ce que tu as changé/)
+    .getByLabel(/Sur quelle pièce/)
     .fill(eventTitleEdited);
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
@@ -84,7 +84,7 @@ test("US#5 – Supprimer le changement", async ({ page }) => {
   await openIntervention(page, chantier);
 
   await page
-    .getByTestId("piece")
+    .getByTestId("action")
     .filter({ hasText: eventTitleEdited })
     .getByRole("button", { name: "Supprimer" })
     .click();

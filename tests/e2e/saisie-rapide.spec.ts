@@ -32,11 +32,6 @@ import {
 //   Étant donné que je suis sur le formulaire de saisie
 //   Quand je recherche "Plaquettes"
 //   Alors les propositions distinguent "Système de freinage avant" et "Système de freinage arrière"
-// Scénario: Impossible d'enregistrer sans nature ni cause [US#24]
-//   Étant donné que je suis sur le formulaire de saisie
-//   Quand j'ai renseigné la pièce mais ni la nature ni la cause
-//   Alors aucune valeur n'est pré-cochée pour ces deux champs
-//   Et l'enregistrement est refusé
 // Scénario: Le kilométrage est pré-rempli avec le dernier relevé [US#24]
 //   Étant donné que le dernier kilométrage connu de mon vélo est 4795
 //   Quand j'ouvre le formulaire de saisie
@@ -44,7 +39,7 @@ import {
 //   Et je peux le corriger avant d'enregistrer
 // Scénario: Enregistrer une pièce sans en connaître le coût [US#24]
 //   Étant donné que je suis sur le formulaire de saisie
-//   Quand je renseigne la pièce, la nature et la cause mais laisse le coût vide
+//   Quand je renseigne l'action, la pièce et l'état mais laisse le coût vide
 //   Alors la pièce est enregistrée
 //   Et son coût apparaît comme non renseigné
 // Scénario: Corriger le rattachement proposé [US#24]
@@ -67,7 +62,7 @@ test("US#24 – Le kilométrage est pré-rempli avec le dernier relevé", async 
   page,
 }) => {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Ajouter une pièce" }).click();
+  await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Kilométrage")).toHaveValue("4795");
@@ -77,44 +72,13 @@ test("US#24 – Le kilométrage est pré-rempli avec le dernier relevé", async 
   await expect(dialog.getByLabel("Kilométrage")).toHaveValue("4820");
 });
 
-test("US#24 – Impossible d'enregistrer sans nature ni cause", async ({
-  page,
-}) => {
-  await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Ajouter une pièce" }).click();
-
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill("[TEST] Chaîne");
-
-  // Aucune valeur pré-cochée : toutes les puces de nature et de cause sont
-  // dans l'état non sélectionné. Le passage par le groupe est nécessaire —
-  // « Accident » est proposé aussi bien pour la pièce que pour le chantier.
-  const nature = dialog.getByRole("group", { name: "Nature du changement" });
-  for (const label of ["Inspection", "Entretien", "Réparation", "Remise à neuf"]) {
-    await expect(
-      nature.getByRole("button", { name: label, exact: true })
-    ).toHaveAttribute("aria-pressed", "false");
-  }
-  const cause = dialog.getByRole("group", { name: "Type de cause" });
-  for (const label of ["Usure normale", "Usure prématurée", "Accident"]) {
-    await expect(
-      cause.getByRole("button", { name: label, exact: true })
-    ).toHaveAttribute("aria-pressed", "false");
-  }
-
-  // Et l'enregistrement reste impossible.
-  await expect(
-    dialog.getByRole("button", { name: "Ajouter", exact: true })
-  ).toBeDisabled();
-});
-
 test("US#24 – Le système se déduit de la pièce choisie", async ({ page }) => {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Ajouter une pièce" }).click();
+  await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
   await dialog
-    .getByLabel(/Qu.est-ce que tu as changé/)
+    .getByLabel(/Sur quelle pièce/)
     .fill("Cassette / roue libre");
 
   await expect(dialog.getByText("Déduit de la pièce")).toBeVisible();
@@ -127,10 +91,10 @@ test("US#24 – Une pièce ambiguë propose les systèmes concernés", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Ajouter une pièce" }).click();
+  await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill("Plaquettes");
+  await dialog.getByLabel(/Sur quelle pièce/).fill("Plaquettes");
 
   await expect(
     dialog.getByRole("button", { name: "Système de freinage avant" })
@@ -164,7 +128,7 @@ test("US#24 – Enregistrer une pièce quand un chantier est ouvert", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Ajouter une pièce" }).click();
+  await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
   // Aucune question sur l'intervention, mais le rattachement est annoncé.
@@ -186,7 +150,7 @@ test("US#24 – Enregistrer une pièce sans en connaître le coût", async ({
 
   await openIntervention(page, chantier);
   const ligne = page
-    .getByTestId("piece")
+    .getByTestId("action")
     .filter({ hasText: "[TEST] Câbles et gaines de vitesses" });
   await expect(ligne).toContainText("—");
 });
@@ -197,12 +161,12 @@ test("US#24 – Corriger le rattachement proposé", async ({ page }) => {
   // Une intervention de destination, planifiée.
   await planifierIntervention(page, autreChantier);
 
-  await page.getByRole("button", { name: "Ajouter une pièce" }).click();
+  await page.getByRole("button", { name: "Ajouter une action" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill("[TEST] Pneus");
+  await dialog.getByLabel(/Sur quelle pièce/).fill("[TEST] Pneus");
   await pickSystem(page, dialog, "Roue arrière");
-  await pickChip(dialog, "Nature du changement", "Entretien");
-  await pickChip(dialog, "Type de cause", "Usure normale");
+  await pickChip(dialog, "Qu'est-ce que tu as fait ?", "Entretien");
+  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "Usure normale");
 
   // On corrige le rattachement proposé.
   await dialog.getByRole("button", { name: "Changer" }).click();

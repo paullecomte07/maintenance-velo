@@ -34,7 +34,7 @@ function formatCost(cost: number) {
   }).format(cost);
 }
 
-/** « 14 – 17 mars » : la plage réellement couverte par les pièces du chantier. */
+/** « 14 – 17 mars » : la plage réellement couverte par les actions du chantier. */
 function formatRange(first: string | null, last: string | null) {
   if (!first) return "—";
   if (!last || first === last) return formatDate(first);
@@ -86,7 +86,7 @@ function InterventionRow({
               {enRetard && <Badge variant="destructive">En retard</Badge>}
             </p>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {subtitle} · {stat.count} pièce{stat.count > 1 ? "s" : ""}
+              {subtitle} · {stat.count} action{stat.count > 1 ? "s" : ""}
             </p>
             <div className="mt-1.5">
               <CauseBadge cause={intervention.cause} />
@@ -105,7 +105,7 @@ function InterventionRow({
 
 /**
  * Rappel de clôture d'un chantier resté sans activité. Il ne ferme rien et ne
- * se rejette pas : ajouter une pièce le fait disparaître de lui-même, puisqu'il
+ * se rejette pas : ajouter une action le fait disparaître de lui-même, puisqu'il
  * se fonde sur la date de dernière activité.
  */
 function StaleReminder({
@@ -125,8 +125,8 @@ function StaleReminder({
         Ce chantier est ouvert depuis{" "}
         <span className="font-medium text-foreground">{days} jours</span>
         {lastActivity
-          ? `, dernière pièce le ${formatDate(lastActivity)}`
-          : ", sans aucune pièce"}
+          ? `, dernière action le ${formatDate(lastActivity)}`
+          : ", sans aucune action"}
         .
       </p>
       <Button
@@ -190,8 +190,8 @@ export function InterventionsList({
       <CardContent className="space-y-5">
         {total === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            Aucune intervention. Ajoute un changement de pièce pour ouvrir ton
-            premier chantier, ou planifie une intervention à venir.
+            Aucune intervention. Ajoute une action pour ouvrir ton premier
+            chantier, ou planifie une intervention à venir.
           </p>
         ) : (
           groups.map((group) => (
