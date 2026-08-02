@@ -24,7 +24,7 @@ export function QuickAddEvent({
   openIntervention,
   lastMileageKm,
   fixedInterventionId,
-  label = "Ajouter une pièce",
+  label = "Ajouter une action",
   variant = "default",
 }: {
   bikeId: string;
@@ -45,7 +45,7 @@ export function QuickAddEvent({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Ajouter un changement de pièce</DialogTitle>
+            <DialogTitle>Ajouter une action</DialogTitle>
           </DialogHeader>
           <MaintenanceEventForm
             action={createEvent.bind(null, bikeId)}

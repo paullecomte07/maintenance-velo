@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import {
   BIKE_SYSTEMS,
-  CAUSE_TYPES,
+  ETATS_CONSTATES,
   NATURE_CHANGEMENT_TYPES,
 } from "@/lib/reference-data";
 import type { Intervention, MaintenanceEvent } from "@/lib/types";
@@ -69,7 +69,7 @@ function DeleteEventDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Supprimer ce changement de pièce ?</DialogTitle>
+          <DialogTitle>Supprimer cette action ?</DialogTitle>
           <DialogDescription>
             « {event.title} » du {formatDate(event.date)} sera supprimé
             définitivement.
@@ -83,7 +83,7 @@ function DeleteEventDialog({
               startTransition(async () => {
                 try {
                   await deleteEvent(event.id, bikeId);
-                  toast.success("Changement supprimé.");
+                  toast.success("Action supprimée.");
                   onOpenChange(false);
                 } catch {
                   toast.error("La suppression a échoué.");
@@ -100,7 +100,7 @@ function DeleteEventDialog({
 }
 
 /**
- * Déplacer une pièce d'un chantier vers un autre : sans cela, une erreur de
+ * Déplacer une action d'un chantier vers un autre : sans cela, une erreur de
  * rattachement automatique deviendrait définitive.
  */
 function MoveEventDialog({
@@ -126,13 +126,13 @@ function MoveEventDialog({
         <DialogHeader>
           <DialogTitle>Déplacer « {event.title} »</DialogTitle>
           <DialogDescription>
-            Choisis l&apos;intervention qui doit porter ce changement.
+            Choisis l&apos;intervention qui doit porter cette action.
           </DialogDescription>
         </DialogHeader>
         {others.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Ce vélo n&apos;a pas d&apos;autre intervention où déplacer cette
-            pièce.
+            action.
           </p>
         ) : (
           <Select value={target} onValueChange={setTarget}>
@@ -158,7 +158,7 @@ function MoveEventDialog({
                   toast.error(error);
                   return;
                 }
-                toast.success("Changement déplacé.");
+                toast.success("Action déplacée.");
                 onOpenChange(false);
               })
             }
@@ -196,7 +196,7 @@ export function MaintenanceSection({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-lg">Pièces changées</CardTitle>
+        <CardTitle className="text-lg">Actions réalisées</CardTitle>
         <QuickAddEvent
           bikeId={bikeId}
           interventions={interventions}
@@ -207,7 +207,7 @@ export function MaintenanceSection({
       <CardContent className="space-y-4">
         {events.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            Aucune pièce enregistrée dans ce chantier.
+            Aucune action enregistrée dans ce chantier.
           </p>
         ) : (
           <>
@@ -215,11 +215,16 @@ export function MaintenanceSection({
               {events.map((event) => (
                 <div
                   key={event.id}
-                  data-testid="piece"
+                  data-testid="action"
                   className="rounded-lg border p-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
+                      {/* L'action en tête de ligne, la pièce en titre : c'est
+                          l'action qu'on ajoute, la pièce n'est que son objet. */}
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {NATURE_CHANGEMENT_TYPES[event.nature_changement]}
+                      </p>
                       <p className="font-medium">{event.title}</p>
                       <p className="text-sm text-muted-foreground">
                         {formatDate(event.date)} · {BIKE_SYSTEMS[event.system]}
@@ -231,13 +236,25 @@ export function MaintenanceSection({
                       {formatCost(event.cost)}
                     </span>
                   </div>
+                  {/* Le libellé est toujours écrit : la couleur ne porte jamais
+                      le sens seule. */}
                   <div className="mt-2 flex flex-wrap gap-1">
-                    <Badge variant="secondary">
-                      {NATURE_CHANGEMENT_TYPES[event.nature_changement]}
-                    </Badge>
-                    <Badge variant="outline">
-                      {CAUSE_TYPES[event.cause_type]}
-                    </Badge>
+                    {event.etat_constate ? (
+                      <Badge
+                        variant={
+                          event.etat_constate === "hs" ? "destructive" : "outline"
+                        }
+                      >
+                        {ETATS_CONSTATES[event.etat_constate]}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="border-dashed font-normal text-muted-foreground"
+                      >
+                        État non renseigné
+                      </Badge>
+                    )}
                   </div>
                   <div className="mt-2 flex flex-wrap justify-end gap-1">
                     <Button
@@ -283,7 +300,7 @@ export function MaintenanceSection({
       >
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Modifier le changement de pièce</DialogTitle>
+            <DialogTitle>Modifier l&apos;action</DialogTitle>
           </DialogHeader>
           {editEvent && (
             <MaintenanceEventForm

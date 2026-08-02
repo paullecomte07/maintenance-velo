@@ -1,7 +1,7 @@
 import type {
   BikeCategory,
   BikeSystem,
-  CauseType,
+  EtatConstate,
   InterventionCause,
   NatureChangementType,
 } from "@/lib/reference-data";
@@ -74,17 +74,29 @@ export function isEnRetard(
   return intervention.date_prevue < today.toISOString().slice(0, 10);
 }
 
+/**
+ * Une **action** menée sur une pièce : ce qu'on a fait, sur quoi, et dans quel
+ * état on l'a trouvée. La table garde son nom historique — le renommer
+ * casserait la production entre l'application manuelle d'une migration et le
+ * déploiement, pour un gain purement cosmétique.
+ */
 export type MaintenanceEvent = {
   id: string;
   bike_id: string;
   intervention_id: string;
   date: string;
+  /** La pièce concernée. */
   title: string;
   system: BikeSystem;
+  /** L'action : inspection, entretien, réparation, remise à neuf. */
   nature_changement: NatureChangementType;
-  cause_type: CauseType;
+  /**
+   * État de la pièce au moment de l'action. `null` sur l'historique migré
+   * depuis un « accident », qui ne disait rien de l'état de la pièce.
+   */
+  etat_constate: EtatConstate | null;
   cost: number | null;
-  /** Kilométrage du vélo relevé au moment du changement. */
+  /** Kilométrage du vélo relevé au moment de l'action. */
   mileage_km: number | null;
   created_at: string;
 };

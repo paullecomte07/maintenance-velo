@@ -36,8 +36,8 @@ export function DeleteBikeButton({
         <DialogHeader>
           <DialogTitle>Supprimer « {bikeName} » ?</DialogTitle>
           <DialogDescription>
-            Le vélo, ses interventions et tout son cahier de changement de
-            pièces seront supprimés définitivement.
+            Le vélo, ses interventions et toutes leurs actions seront
+            supprimés définitivement.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

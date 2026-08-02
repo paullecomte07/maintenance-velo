@@ -87,18 +87,23 @@ export function parseInterventionCause(
   return cause in INTERVENTION_CAUSES ? (cause as InterventionCause) : null;
 }
 
-export const CAUSE_TYPES = {
-  usure_prematuree: "Usure prématurée",
+// État dans lequel la pièce a été trouvée au moment de l'action. C'est une
+// **observation**, pas une intention : elle n'existe qu'une fois l'action
+// faite, et ne se déduit jamais de la cause de l'intervention.
+export const ETATS_CONSTATES = {
+  neuf: "Neuf",
   usure_normale: "Usure normale",
-  accident: "Accident",
+  usure_prematuree: "Usure prématurée",
+  hs: "HS",
 } as const;
 
-export type CauseType = keyof typeof CAUSE_TYPES;
+export type EtatConstate = keyof typeof ETATS_CONSTATES;
 
-export const CAUSE_TYPE_DESCRIPTIONS: Record<CauseType, string> = {
-  usure_prematuree: "L'élément à changer présente une usure anormale",
+export const ETAT_CONSTATE_DESCRIPTIONS: Record<EtatConstate, string> = {
+  neuf: "En parfait état, rien à signaler",
   usure_normale: "Durée de vie respectée",
-  accident: "Casse due à un accident d'utilisation",
+  usure_prematuree: "Usure anormale au regard du kilométrage",
+  hs: "Hors service : la pièce ne remplit plus son rôle",
 };
 
 // Organes ("Référentiel des organes") par système — aide à la saisie du titre.

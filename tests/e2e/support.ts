@@ -49,9 +49,12 @@ export async function deleteBike(page: Page, name: string) {
 }
 
 export type PieceInput = {
+  /** La pièce sur laquelle porte l'action. */
   titre: string;
+  /** L'action : Inspection, Entretien, Réparation, Remise à neuf. */
   nature?: string;
-  cause?: string;
+  /** L'état dans lequel la pièce a été trouvée. */
+  etat?: string;
   cout?: string;
   date?: string;
   /** Nom du chantier à ouvrir, quand aucun n'est en cours. */
@@ -114,21 +117,26 @@ export async function pickSystem(page: Page, dialog: Locator, label: string) {
 }
 
 /**
- * Remplit le formulaire de saisie rapide, déjà ouvert, et valide.
- * Nature et cause n'ont aucune valeur par défaut : il faut toujours les
+ * Remplit le formulaire de saisie, déjà ouvert, et valide.
+ * L'action et l'état n'ont aucune valeur par défaut : il faut toujours les
  * choisir pour que l'enregistrement soit possible.
  */
 export async function fillPiece(page: Page, piece: PieceInput) {
   const dialog = page.getByRole("dialog");
 
-  await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill(piece.titre);
+  await pickChip(dialog, "Qu'est-ce que tu as fait ?", piece.nature ?? "Entretien");
+
+  await dialog.getByLabel(/Sur quelle pièce/).fill(piece.titre);
 
   if (piece.systeme) {
     await pickSystem(page, dialog, piece.systeme);
   }
 
-  await pickChip(dialog, "Nature du changement", piece.nature ?? "Entretien");
-  await pickChip(dialog, "Type de cause", piece.cause ?? "Usure normale");
+  await pickChip(
+    dialog,
+    "Dans quel état tu l'as trouvée ?",
+    piece.etat ?? "Usure normale"
+  );
 
   if (piece.date) await dialog.getByLabel("Date *").fill(piece.date);
   if (piece.cout) await dialog.getByLabel("Coût (€)").fill(piece.cout);
@@ -150,7 +158,7 @@ export async function fillPiece(page: Page, piece: PieceInput) {
 
 /** Ouvre le formulaire depuis la fiche vélo ou la fiche d'un chantier. */
 export async function addPiece(page: Page, piece: PieceInput) {
-  await page.getByRole("button", { name: "Ajouter une pièce" }).click();
+  await page.getByRole("button", { name: "Ajouter une action" }).click();
   await fillPiece(page, piece);
 }
 

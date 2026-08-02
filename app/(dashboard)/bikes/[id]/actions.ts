@@ -8,14 +8,23 @@ import {
   BIKE_CATEGORIES,
   BIKE_SYSTEMS,
   CAUSE_MANQUANTE,
-  CAUSE_TYPES,
+  ETATS_CONSTATES,
   NATURE_CHANGEMENT_TYPES,
   parseInterventionCause,
 } from "@/lib/reference-data";
 import { createClient } from "@/lib/supabase/server";
 import { NEW_INTERVENTION, type Bike, type MaintenanceEvent } from "@/lib/types";
 
-export type EventFormState = { error: string | null; success: boolean };
+export type EventFormState = {
+  error: string | null;
+  success: boolean;
+  /**
+   * Chantier auquel l'action vient d'être rattachée. Renvoyé pour que le
+   * formulaire puisse enchaîner : sans lui, la seconde action d'une série
+   * tenterait d'ouvrir un *second* chantier, refusé par l'index unique.
+   */
+  intervention?: { id: string; title: string };
+};
 
 export type AnalysisState = {
   error: string | null;
@@ -27,23 +36,27 @@ export type AnalysisState = {
 function eventPayload(formData: FormData) {
   const cost = (formData.get("cost") as string)?.trim();
   const mileage = (formData.get("mileage_km") as string)?.trim();
+  const etat = (formData.get("etat_constate") as string)?.trim();
   return {
     date: formData.get("date") as string,
     title: (formData.get("title") as string).trim(),
     system: formData.get("system") as string,
     nature_changement: formData.get("nature_changement") as string,
-    cause_type: formData.get("cause_type") as string,
+    // L'état est obligatoire à la saisie mais la colonne est nullable :
+    // l'historique migré depuis un « accident » n'en a pas, et une action
+    // seulement *prévue* n'en aura pas non plus (#26).
+    etat_constate: etat && etat in ETATS_CONSTATES ? etat : null,
     cost: cost ? Number(cost) : null,
     mileage_km: mileage ? Number(mileage) : null,
   };
 }
 
 /**
- * Détermine le chantier auquel rattacher une pièce, sans jamais poser la
+ * Détermine le chantier auquel rattacher une action, sans jamais poser la
  * question quand on peut y répondre :
  *
  *   1. un rattachement explicite (correction depuis le formulaire) gagne ;
- *   2. sinon, le chantier ouvert du vélo — quelle que soit la date de la pièce,
+ *   2. sinon, le chantier ouvert du vélo — quelle que soit la date de l'action,
  *      c'est ce qui permet à un chantier de s'étaler sur plusieurs jours ;
  *   3. sinon seulement, on demande un titre et on ouvre un nouveau chantier.
  *
@@ -53,24 +66,30 @@ async function resolveInterventionId(
   supabase: ReturnType<typeof createClient>,
   bikeId: string,
   formData: FormData
-): Promise<{ id: string } | { error: string }> {
+): Promise<{ id: string; title: string } | { error: string }> {
   const submitted = (formData.get("intervention_id") as string | null)?.trim();
 
   if (submitted && submitted !== NEW_INTERVENTION) {
-    return { id: submitted };
+    const { data } = await supabase
+      .from("interventions")
+      .select("id, title")
+      .eq("id", submitted)
+      .maybeSingle<{ id: string; title: string }>();
+
+    return data ?? { id: submitted, title: "" };
   }
 
   if (!submitted) {
     const { data: open } = await supabase
       .from("interventions")
-      .select("id")
+      .select("id, title")
       .eq("bike_id", bikeId)
       .not("started_at", "is", null)
       .is("closed_at", null)
-      .maybeSingle<{ id: string }>();
+      .maybeSingle<{ id: string; title: string }>();
 
     if (open) {
-      return { id: open.id };
+      return open;
     }
   }
 
@@ -80,7 +99,7 @@ async function resolveInterventionId(
   }
 
   // La cause vaut pour tout le chantier : elle n'est demandée qu'à son
-  // ouverture, jamais sur les pièces suivantes.
+  // ouverture, jamais sur les actions suivantes.
   const cause = parseInterventionCause(formData.get("new_intervention_cause"));
   if (!cause) {
     return { error: CAUSE_MANQUANTE };
@@ -96,14 +115,14 @@ async function resolveInterventionId(
         (formData.get("date") as string) ?? new Date().toISOString().slice(0, 10),
       closed_at: null,
     })
-    .select("id")
-    .single<{ id: string }>();
+    .select("id, title")
+    .single<{ id: string; title: string }>();
 
   if (error || !data) {
     return { error: "L'ouverture du chantier a échoué. Réessaie." };
   }
 
-  return { id: data.id };
+  return data;
 }
 
 export async function createEvent(
@@ -126,7 +145,7 @@ export async function createEvent(
 
   if (error) {
     return {
-      error: "L'enregistrement du changement a échoué. Réessaie.",
+      error: "L'enregistrement de l'action a échoué. Réessaie.",
       success: false,
     };
   }
@@ -134,7 +153,7 @@ export async function createEvent(
   revalidatePath(`/bikes/${bikeId}`);
   revalidatePath(`/bikes/${bikeId}/interventions`);
   revalidatePath(`/bikes/${bikeId}/interventions/${intervention.id}`);
-  return { error: null, success: true };
+  return { error: null, success: true, intervention };
 }
 
 export async function updateEvent(
@@ -157,7 +176,7 @@ export async function updateEvent(
 
   if (error) {
     return {
-      error: "La modification du changement a échoué. Réessaie.",
+      error: "La modification de l'action a échoué. Réessaie.",
       success: false,
     };
   }
@@ -165,11 +184,11 @@ export async function updateEvent(
   revalidatePath(`/bikes/${bikeId}`);
   revalidatePath(`/bikes/${bikeId}/interventions`);
   revalidatePath(`/bikes/${bikeId}/interventions/${intervention.id}`);
-  return { error: null, success: true };
+  return { error: null, success: true, intervention };
 }
 
 /**
- * Déplace une pièce d'un chantier vers un autre. Sans cela, une erreur de
+ * Déplace une action d'un chantier vers un autre. Sans cela, une erreur de
  * rattachement automatique deviendrait définitive.
  */
 export async function moveEvent(
@@ -185,7 +204,7 @@ export async function moveEvent(
     .eq("id", eventId);
 
   if (error) {
-    return { error: "Le déplacement du changement a échoué. Réessaie." };
+    return { error: "Le déplacement de l'action a échoué. Réessaie." };
   }
 
   revalidatePath(`/bikes/${bikeId}`);
@@ -202,7 +221,7 @@ export async function deleteEvent(eventId: string, bikeId: string) {
     .eq("id", eventId);
 
   if (error) {
-    throw new Error("La suppression du changement a échoué.");
+    throw new Error("La suppression de l'action a échoué.");
   }
 
   revalidatePath(`/bikes/${bikeId}`);
@@ -216,7 +235,11 @@ function formatEventsForPrompt(bike: Bike, events: MaintenanceEvent[]) {
 
   const eventLines = events.map((e) => {
     const cost = e.cost !== null ? `${e.cost} €` : "coût inconnu";
-    return `- ${e.date} · ${BIKE_SYSTEMS[e.system]} · ${e.title} · ${NATURE_CHANGEMENT_TYPES[e.nature_changement]} · ${CAUSE_TYPES[e.cause_type]} · ${cost}`;
+    const etat = e.etat_constate
+      ? ETATS_CONSTATES[e.etat_constate]
+      : "état non renseigné";
+    const km = e.mileage_km !== null ? ` · ${e.mileage_km} km` : "";
+    return `- ${e.date} · ${BIKE_SYSTEMS[e.system]} · ${e.title} · ${NATURE_CHANGEMENT_TYPES[e.nature_changement]} · ${etat}${km} · ${cost}`;
   });
 
   return [
@@ -225,7 +248,7 @@ function formatEventsForPrompt(bike: Bike, events: MaintenanceEvent[]) {
     ageLine,
     bike.mileage_km !== null ? `Kilométrage : ${bike.mileage_km} km` : "Kilométrage inconnu",
     "",
-    "Cahier de changement de pièces (du plus ancien au plus récent) :",
+    "Actions menées sur ce vélo (de la plus ancienne à la plus récente) :",
     ...eventLines,
   ].join("\n");
 }
@@ -284,7 +307,7 @@ export async function generateAnalysis(
 
   if (!events || events.length === 0) {
     return {
-      error: "Ajoute au moins un changement de pièce avant de lancer une analyse.",
+      error: "Ajoute au moins une action avant de lancer une analyse.",
       success: false,
     };
   }

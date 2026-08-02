@@ -13,7 +13,7 @@ export default function Home() {
           Suivez l&apos;entretien de vos vélos
         </h1>
         <p className="max-w-md text-muted-foreground">
-          Cahier de changement de pièces en ligne, suivi des coûts et valeur
+          Cahier d&apos;entretien en ligne, suivi des coûts et valeur
           estimée de chaque vélo, accessible depuis tous vos appareils.
         </p>
         <div className="flex gap-3">

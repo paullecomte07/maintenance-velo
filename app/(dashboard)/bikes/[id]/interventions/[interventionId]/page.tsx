@@ -66,7 +66,7 @@ export default async function InterventionPage({
     .returns<MaintenanceEvent[]>();
 
   // Toutes les interventions du vélo : nécessaires pour proposer une
-  // destination lorsqu'on déplace une pièce.
+  // destination lorsqu'on déplace une action.
   const { data: siblings } = await supabase
     .from("interventions")
     .select("*")
@@ -88,7 +88,7 @@ export default async function InterventionPage({
 
   const subtitle =
     status === "terminee"
-      ? range ?? "Aucune pièce"
+      ? range ?? "Aucune action"
       : status === "en_cours"
         ? `Ouvert le ${formatDate(intervention.started_at!)}`
         : intervention.date_prevue
@@ -124,7 +124,7 @@ export default async function InterventionPage({
           <CauseBadge cause={intervention.cause} />
         </div>
         <p className="text-sm text-muted-foreground">
-          {subtitle} · {pieces.length} pièce{pieces.length > 1 ? "s" : ""}
+          {subtitle} · {pieces.length} action{pieces.length > 1 ? "s" : ""}
           {totalCost > 0 && ` · ${formatCost(totalCost)}`}
         </p>
       </div>

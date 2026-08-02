@@ -66,7 +66,7 @@ export default async function BikePage({
   const allEvents = events ?? [];
   const allInterventions = interventions ?? [];
 
-  // Coût, nombre de pièces et plage de dates réelle, par intervention.
+  // Coût, nombre d'actions et plage de dates réelle, par intervention.
   const stats: InterventionStats = {};
   const ranges: Record<string, { first: string | null; last: string | null }> =
     {};

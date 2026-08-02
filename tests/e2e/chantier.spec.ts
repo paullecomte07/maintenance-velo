@@ -72,7 +72,7 @@ test("US#4 – Créer un vélo de test (chantier)", async ({ page }) => {
 test("US#23 – Nommer le chantier à son ouverture", async ({ page }) => {
   await openBike(page, bikeName);
 
-  await page.getByRole("button", { name: "Ajouter une pièce" }).click();
+  await page.getByRole("button", { name: "Ajouter une action" }).click();
   const dialog = page.getByRole("dialog");
 
   // Aucun chantier ouvert : le titre est demandé, et jamais généré.
@@ -80,10 +80,10 @@ test("US#23 – Nommer le chantier à son ouverture", async ({ page }) => {
     dialog.getByLabel(/Tu démarres un nouveau chantier/)
   ).toBeVisible();
 
-  await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill(piece1);
+  await dialog.getByLabel(/Sur quelle pièce/).fill(piece1);
   await pickSystem(page, dialog, "Transmission");
-  await pickChip(dialog, "Nature du changement", "Entretien");
-  await pickChip(dialog, "Type de cause", "Usure normale");
+  await pickChip(dialog, "Qu'est-ce que tu as fait ?", "Entretien");
+  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "Usure normale");
   await dialog.getByLabel("Date *").fill(isoDaysAgo(3));
   await dialog.getByLabel("Coût (€)").fill("30");
   await dialog.getByLabel(/Tu démarres un nouveau chantier/).fill(chantier);
@@ -101,27 +101,27 @@ test("US#23 – Rattacher une pièce à un chantier ouvert trois jours plus tôt
 
   // Aucune question sur le regroupement : le chantier ouvert reçoit la pièce,
   // bien que sa date diffère de celle de l'ouverture.
-  await page.getByRole("button", { name: "Ajouter une pièce" }).click();
+  await page.getByRole("button", { name: "Ajouter une action" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText(new RegExp(`Rattaché à`))).toBeVisible();
   await expect(
     dialog.getByLabel(/Tu démarres un nouveau chantier/)
   ).toBeHidden();
 
-  await dialog.getByLabel(/Qu.est-ce que tu as changé/).fill(piece2);
+  await dialog.getByLabel(/Sur quelle pièce/).fill(piece2);
   await pickSystem(page, dialog, "Transmission");
-  await pickChip(dialog, "Nature du changement", "Réparation");
-  await pickChip(dialog, "Type de cause", "Usure normale");
+  await pickChip(dialog, "Qu'est-ce que tu as fait ?", "Réparation");
+  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "Usure normale");
   await dialog.getByLabel("Coût (€)").fill("20");
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
   await openIntervention(page, chantier);
   await expect(
-    page.getByTestId("piece").filter({ hasText: piece1 })
+    page.getByTestId("action").filter({ hasText: piece1 })
   ).toBeVisible();
   await expect(
-    page.getByTestId("piece").filter({ hasText: piece2 })
+    page.getByTestId("action").filter({ hasText: piece2 })
   ).toBeVisible();
   await expect(page.getByText("En cours").first()).toBeVisible();
 });
@@ -177,10 +177,10 @@ test("US#23 – Renommer un chantier en cours", async ({ page }) => {
   ).toBeVisible();
   // Les pièces rattachées le restent.
   await expect(
-    page.getByTestId("piece").filter({ hasText: piece1 })
+    page.getByTestId("action").filter({ hasText: piece1 })
   ).toBeVisible();
   await expect(
-    page.getByTestId("piece").filter({ hasText: piece2 })
+    page.getByTestId("action").filter({ hasText: piece2 })
   ).toBeVisible();
 });
 
@@ -194,7 +194,7 @@ test("US#23 – Déplacer une pièce vers une autre intervention", async ({
 
   await openIntervention(page, chantierRenomme);
   await page
-    .getByTestId("piece")
+    .getByTestId("action")
     .filter({ hasText: piece2 })
     .getByRole("button", { name: "Déplacer" })
     .click();
