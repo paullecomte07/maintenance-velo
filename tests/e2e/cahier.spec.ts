@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  ouvrirChantier,
   addPiece,
   createBike,
   deleteBike,
@@ -49,14 +50,12 @@ test("US#4 – Créer un vélo de test", async ({ page }) => {
 test("US#5 – Ajouter un changement de pièce", async ({ page }) => {
   await openBike(page, bikeName);
 
-  await addPiece(page, {
+  await ouvrirChantier(page, chantier, {
     titre: eventTitle,
     systeme: "Système de freinage avant",
     cout: "25",
-    nouveauChantier: chantier,
   });
 
-  await openIntervention(page, chantier);
   await expect(page.getByText(eventTitle)).toBeVisible();
 });
 

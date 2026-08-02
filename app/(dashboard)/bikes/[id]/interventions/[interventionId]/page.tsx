@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { closeIntervention, startIntervention } from "../actions";
+import {
+  closeIntervention,
+  deleteIntervention,
+  startIntervention,
+} from "../actions";
 import { CauseBadge } from "@/components/cause-badge";
 import { InterventionHeaderActions } from "@/components/intervention-header-actions";
 import { MaintenanceSection } from "@/components/maintenance-section";
@@ -105,6 +109,11 @@ export default async function InterventionPage({
     intervention.id,
     bike.id
   );
+  const deleteAction = deleteIntervention.bind(
+    null,
+    intervention.id,
+    bike.id
+  );
 
   return (
     <div className="space-y-6">
@@ -133,9 +142,11 @@ export default async function InterventionPage({
         bikeId={bike.id}
         intervention={intervention}
         status={status}
+        actionCount={pieces.length}
         lastMileageKm={bike.mileage_km}
         onStart={startAction}
         onClose={closeAction}
+        onDelete={deleteAction}
       />
 
       {intervention.note && (
@@ -153,7 +164,7 @@ export default async function InterventionPage({
         bikeId={bike.id}
         events={pieces}
         interventions={siblings ?? [intervention]}
-        fixedInterventionId={intervention.id}
+        interventionId={intervention.id}
         lastMileageKm={bike.mileage_km}
       />
     </div>

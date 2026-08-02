@@ -24,9 +24,6 @@ export type Bike = {
   created_at: string;
 };
 
-// Valeur sentinelle du select « intervention » : crée une intervention à la volée.
-export const NEW_INTERVENTION = "__new__";
-
 // Une intervention est un chantier qui traverse trois états. L'état n'est pas
 // stocké : il se déduit des deux dates, ce qui évite qu'il puisse diverger.
 export type InterventionStatus = "a_venir" | "en_cours" | "terminee";

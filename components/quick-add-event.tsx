@@ -11,27 +11,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Intervention } from "@/lib/types";
 
 /**
- * Point d'entrée unique de la saisie. Depuis la fiche vélo, il ouvre le
- * formulaire sans rien demander sur le regroupement : le serveur rattache au
- * chantier ouvert, ou en démarre un dont l'utilisateur choisit le nom.
+ * Point d'entrée de la saisie, depuis la fiche d'une intervention. On n'ajoute
+ * plus d'action depuis la fiche vélo : l'intervention est la porte d'entrée,
+ * pas un effet de bord de la première action.
  */
 export function QuickAddEvent({
   bikeId,
-  interventions,
-  openIntervention,
+  interventionId,
   lastMileageKm,
-  fixedInterventionId,
   label = "Ajouter une action",
   variant = "default",
 }: {
   bikeId: string;
-  interventions: Intervention[];
-  openIntervention?: Intervention | null;
+  interventionId: string;
   lastMileageKm?: number | null;
-  fixedInterventionId?: string;
   label?: string;
   variant?: "default" | "outline";
 }) {
@@ -49,10 +44,8 @@ export function QuickAddEvent({
           </DialogHeader>
           <MaintenanceEventForm
             action={createEvent.bind(null, bikeId)}
-            interventions={interventions}
-            openIntervention={openIntervention}
+            interventionId={interventionId}
             lastMileageKm={lastMileageKm}
-            fixedInterventionId={fixedInterventionId}
             onSuccess={() => setOpen(false)}
           />
         </DialogContent>

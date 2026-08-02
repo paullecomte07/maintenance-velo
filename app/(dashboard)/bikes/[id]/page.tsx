@@ -12,7 +12,6 @@ import {
   InterventionsList,
   type InterventionStats,
 } from "@/components/interventions-list";
-import { QuickAddEvent } from "@/components/quick-add-event";
 import { createClient } from "@/lib/supabase/server";
 import { BIKE_CATEGORIES } from "@/lib/reference-data";
 import {
@@ -156,18 +155,6 @@ export default async function BikePage({
           <h1 className="text-2xl font-bold">{bike.name}</h1>
           <Badge variant="secondary">{BIKE_CATEGORIES[bike.category]}</Badge>
         </div>
-        <div className="flex gap-2">
-          <QuickAddEvent
-            bikeId={bike.id}
-            interventions={allInterventions}
-            openIntervention={openIntervention}
-            lastMileageKm={bike.mileage_km}
-          />
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/bikes/${bike.id}/edit`}>Modifier</Link>
-          </Button>
-          <DeleteBikeButton bikeName={bike.name} onDelete={deleteAction} />
-        </div>
       </div>
 
       <InterventionsList
@@ -207,6 +194,16 @@ export default async function BikePage({
                   </div>
                 ))}
               </dl>
+
+              {/* Modifier et supprimer sont des réglages du vélo, pas des
+                  gestes courants : ils vivent ici, à côté de ce qu'ils
+                  changent, plutôt qu'en tête de page. */}
+              <div className="mt-6 flex flex-wrap justify-end gap-2 border-t pt-4">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/bikes/${bike.id}/edit`}>Modifier</Link>
+                </Button>
+                <DeleteBikeButton bikeName={bike.name} onDelete={deleteAction} />
+              </div>
             </div>
           </details>
         </CardContent>

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import {
+  ouvrirChantier,
   addPiece,
   createBike,
   deleteBike,
@@ -54,13 +55,11 @@ const piece = "[TEST] Chaîne";
 /** Ouvre un chantier avec une pièce, puis le clôture. */
 async function chantierTermine(page: Page, titre: string) {
   await openBike(page, bikeName);
-  await addPiece(page, {
+  await ouvrirChantier(page, titre, {
     titre: `${piece} ${titre}`,
     systeme: "Transmission",
     cout: "10",
-    nouveauChantier: titre,
   });
-  await openIntervention(page, titre);
   await page.getByRole("button", { name: "Clôturer" }).click();
   await expect(page.getByRole("button", { name: "Clôturer" })).toBeHidden({
     timeout: 15000,
@@ -86,13 +85,14 @@ test("US#25 – Les trois groupes d'interventions sont visibles ensemble", async
   await openBike(page, bikeName);
   await planifierIntervention(page, aVenir);
 
-  // …et une en cours.
-  await addPiece(page, {
+  // …et une en cours : la première action la fait passer de « à venir »
+  // à « en cours ».
+  await ouvrirChantier(page, enCours, {
     titre: piece,
     systeme: "Transmission",
     cout: "30",
-    nouveauChantier: enCours,
   });
+  await openBike(page, bikeName);
 
   await expect(group(page, "En cours").getByText(enCours)).toBeVisible();
   await expect(group(page, "À venir").getByText(aVenir)).toBeVisible();
