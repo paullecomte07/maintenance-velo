@@ -74,6 +74,10 @@ test("US#4 – Créer un vélo de test (fiche)", async ({ page }) => {
 test("US#25 – Les trois groupes d'interventions sont visibles ensemble", async ({
   page,
 }) => {
+  // Ce scénario monte quatre interventions de bout en bout par l'interface :
+  // la limite par défaut de 30 s ne suffit plus.
+  test.setTimeout(120_000);
+
   // Deux interventions terminées…
   await chantierTermine(page, termine1);
   await chantierTermine(page, termine2);
@@ -113,7 +117,7 @@ test("US#25 – Ouvrir la fiche d'un chantier en cours depuis la liste", async (
   await openIntervention(page, enCours);
 
   await expect(page.getByRole("heading", { name: enCours })).toBeVisible();
-  await expect(page.getByText("Pièces changées")).toBeVisible();
+  await expect(page.getByText("Actions réalisées")).toBeVisible();
   await expect(page.getByText(piece).first()).toBeVisible();
 });
 
@@ -142,11 +146,11 @@ test("US#25 – La liste des pièces à plat n'est plus proposée", async ({
 
   // L'ancien cahier à plat a disparu de la fiche vélo…
   await expect(page.getByText("Cahier de changement de pièces")).toBeHidden();
-  await expect(page.getByText("Pièces changées")).toBeHidden();
+  await expect(page.getByText("Actions réalisées")).toBeHidden();
 
   // …les pièces ne sont accessibles qu'en ouvrant une intervention.
   await openIntervention(page, enCours);
-  await expect(page.getByText("Pièces changées")).toBeVisible();
+  await expect(page.getByText("Actions réalisées")).toBeVisible();
 });
 
 test("US#4 – Supprimer le vélo de test (fiche)", async ({ page }) => {

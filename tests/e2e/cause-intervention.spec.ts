@@ -87,7 +87,7 @@ test("US#29 – Impossible d'enregistrer sans cause", async ({ page }) => {
   await dialog.getByLabel(/Sur quelle pièce/).fill("[TEST] Cintre");
   await pickSystem(page, dialog, "Direction");
   await pickChip(dialog, "Qu'est-ce que tu as fait ?", "Réparation");
-  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "Accident");
+  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "HS");
   await dialog.getByLabel(/Tu démarres un nouveau chantier/).fill(chantier);
   await expect(ajouter).toBeDisabled();
 
@@ -124,7 +124,7 @@ test("US#29 – La cause n'est demandée qu'une fois par chantier", async ({
   await dialog.getByLabel(/Sur quelle pièce/).fill("[TEST] Potence");
   await pickSystem(page, dialog, "Direction");
   await pickChip(dialog, "Qu'est-ce que tu as fait ?", "Réparation");
-  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "Accident");
+  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "HS");
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 });

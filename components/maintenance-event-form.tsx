@@ -270,9 +270,14 @@ export function MaintenanceEventForm({
             <input type="hidden" name="system" value={system ?? ""} />
           </>
         ) : (
+          // `?? ""` et non `?? undefined` : `undefined` rendrait le Select
+          // non contrôlé, il garderait l'affichage de l'action précédente
+          // après un « ajouter une autre », et re-choisir la même valeur ne
+          // déclencherait aucun changement — champ visuellement rempli, mais
+          // vide pour le formulaire.
           <Select
             name="system"
-            value={system ?? undefined}
+            value={system ?? ""}
             onValueChange={(v) => setSystem(v as BikeSystem)}
           >
             {/* Le Select Radix n'est pas relié à son Label : on le nomme. */}

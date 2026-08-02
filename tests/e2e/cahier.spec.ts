@@ -94,7 +94,7 @@ test("US#5 – Supprimer le changement", async ({ page }) => {
     .click();
 
   await expect(
-    page.getByText("Aucune pièce enregistrée dans ce chantier.")
+    page.getByText("Aucune action enregistrée dans ce chantier.")
   ).toBeVisible({ timeout: 15000 });
 });
 
