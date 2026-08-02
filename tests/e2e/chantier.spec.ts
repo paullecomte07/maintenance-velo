@@ -124,7 +124,7 @@ test("US#23 – Noter une remarque sur un chantier", async ({ page }) => {
 
   await page.getByRole("button", { name: "Renommer" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Note").fill("[TEST] Chaîne mesurée à 0,75 %.");
+  await dialog.getByRole("textbox", { name: "Note" }).fill("[TEST] Chaîne mesurée à 0,75 %.");
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
