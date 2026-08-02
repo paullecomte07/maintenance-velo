@@ -1,68 +1,83 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Les couleurs sont lues depuis les variables CSS de `app/globals.css`, qui
+ * les stocke en canaux RVB. `rgb(… / <alpha-value>)` est ce qui permet aux
+ * modificateurs d'opacité (`bg-muted/50`, `hover:bg-primary/90`) de continuer
+ * à fonctionner : avec des hexadécimaux bruts, ils tomberaient en silence.
+ */
+const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 const config: Config = {
-    content: [
+  content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-  	extend: {
-  		colors: {
-  			background: 'oklch(var(--background) / <alpha-value>)',
-  			foreground: 'oklch(var(--foreground) / <alpha-value>)',
-  			card: {
-  				DEFAULT: 'oklch(var(--card) / <alpha-value>)',
-  				foreground: 'oklch(var(--card-foreground) / <alpha-value>)'
-  			},
-  			popover: {
-  				DEFAULT: 'oklch(var(--popover) / <alpha-value>)',
-  				foreground: 'oklch(var(--popover-foreground) / <alpha-value>)'
-  			},
-  			primary: {
-  				DEFAULT: 'oklch(var(--primary) / <alpha-value>)',
-  				foreground: 'oklch(var(--primary-foreground) / <alpha-value>)'
-  			},
-  			secondary: {
-  				DEFAULT: 'oklch(var(--secondary) / <alpha-value>)',
-  				foreground: 'oklch(var(--secondary-foreground) / <alpha-value>)'
-  			},
-  			muted: {
-  				DEFAULT: 'oklch(var(--muted) / <alpha-value>)',
-  				foreground: 'oklch(var(--muted-foreground) / <alpha-value>)'
-  			},
-  			accent: {
-  				DEFAULT: 'oklch(var(--accent) / <alpha-value>)',
-  				foreground: 'oklch(var(--accent-foreground) / <alpha-value>)'
-  			},
-  			destructive: 'oklch(var(--destructive) / <alpha-value>)',
-  			border: 'oklch(var(--border) / <alpha-value>)',
-  			input: 'oklch(var(--input) / <alpha-value>)',
-  			ring: 'oklch(var(--ring) / <alpha-value>)',
-  			chart: {
-  				'1': 'oklch(var(--chart-1) / <alpha-value>)',
-  				'2': 'oklch(var(--chart-2) / <alpha-value>)',
-  				'3': 'oklch(var(--chart-3) / <alpha-value>)',
-  				'4': 'oklch(var(--chart-4) / <alpha-value>)',
-  				'5': 'oklch(var(--chart-5) / <alpha-value>)'
-  			},
-  			sidebar: {
-  				DEFAULT: 'oklch(var(--sidebar) / <alpha-value>)',
-  				foreground: 'oklch(var(--sidebar-foreground) / <alpha-value>)',
-  				primary: 'oklch(var(--sidebar-primary) / <alpha-value>)',
-  				'primary-foreground': 'oklch(var(--sidebar-primary-foreground) / <alpha-value>)',
-  				accent: 'oklch(var(--sidebar-accent) / <alpha-value>)',
-  				'accent-foreground': 'oklch(var(--sidebar-accent-foreground) / <alpha-value>)',
-  				border: 'oklch(var(--sidebar-border) / <alpha-value>)',
-  				ring: 'oklch(var(--sidebar-ring) / <alpha-value>)'
-  			}
-  		},
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
-  		}
-  	}
+    extend: {
+      fontFamily: {
+        // La police est chargée par `app/layout.tsx` ; sans ce branchement,
+        // elle était téléchargée puis jamais appliquée.
+        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+      },
+      colors: {
+        background: token("background"),
+        foreground: token("foreground"),
+        card: {
+          DEFAULT: token("card"),
+          foreground: token("card-foreground"),
+        },
+        popover: {
+          DEFAULT: token("popover"),
+          foreground: token("popover-foreground"),
+        },
+        primary: {
+          DEFAULT: token("primary"),
+          foreground: token("primary-foreground"),
+        },
+        secondary: {
+          DEFAULT: token("secondary"),
+          foreground: token("secondary-foreground"),
+        },
+        muted: {
+          DEFAULT: token("muted"),
+          foreground: token("muted-foreground"),
+        },
+        accent: {
+          DEFAULT: token("accent"),
+          foreground: token("accent-foreground"),
+        },
+        destructive: {
+          DEFAULT: token("destructive"),
+          foreground: token("destructive-foreground"),
+        },
+        border: token("border"),
+        input: token("input"),
+        ring: token("ring"),
+
+        // Familles de sens, jamais utilisées comme décoration.
+        ok: { DEFAULT: token("ok"), foreground: token("ok-foreground") },
+        warn: { DEFAULT: token("warn"), foreground: token("warn-foreground") },
+        info: { DEFAULT: token("info"), foreground: token("info-foreground") },
+        alert: {
+          DEFAULT: token("alert"),
+          foreground: token("alert-foreground"),
+        },
+
+        // Réservées au graphe coût vs valeur (#8).
+        chart: {
+          cost: token("chart-cost"),
+          value: token("chart-value"),
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+    },
   },
   plugins: [require("tailwindcss-animate")],
 };

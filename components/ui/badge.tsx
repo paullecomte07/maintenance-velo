@@ -15,6 +15,15 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
         outline: "text-foreground",
+        // Familles de sens : fond teinté, encre foncée, bordure assortie.
+        // Toujours accompagnées de leur libellé — la couleur ne fait
+        // qu'accélérer la lecture, elle ne la remplace pas.
+        ok: "border-ok-foreground/20 bg-ok text-ok-foreground",
+        warn: "border-warn-foreground/20 bg-warn text-warn-foreground",
+        info: "border-info-foreground/20 bg-info text-info-foreground",
+        alert: "border-alert-foreground/25 bg-alert text-alert-foreground",
+        /** Donnée absente, jamais inventée : pointillés et encre discrète. */
+        absent: "border-dashed border-input font-normal text-muted-foreground",
       },
     },
     defaultVariants: {

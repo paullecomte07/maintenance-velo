@@ -32,10 +32,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    // Les variables de police vivent sur <html> : la règle de base de Tailwind
+    // applique `font-family` à cet élément, et une variable définie plus bas
+    // rendait la déclaration invalide — le navigateur retombait alors sur sa
+    // police par défaut, un serif.
+    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className="font-sans antialiased">
         {children}
         <Toaster />
       </body>

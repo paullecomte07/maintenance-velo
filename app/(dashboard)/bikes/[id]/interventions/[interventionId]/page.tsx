@@ -126,10 +126,10 @@ export default async function InterventionPage({
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold">{intervention.title}</h1>
-          <Badge variant={status === "en_cours" ? "secondary" : "outline"}>
+          <Badge variant={status === "en_cours" ? "info" : "outline"}>
             {INTERVENTION_STATUS_LABELS[status]}
           </Badge>
-          {enRetard && <Badge variant="destructive">En retard</Badge>}
+          {enRetard && <Badge variant="alert">En retard</Badge>}
           <CauseBadge cause={intervention.cause} />
         </div>
         <p className="text-sm text-muted-foreground">

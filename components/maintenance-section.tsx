@@ -8,9 +8,9 @@ import {
   moveEvent,
   updateEvent,
 } from "@/app/(dashboard)/bikes/[id]/actions";
+import { EtatBadge } from "@/components/etat-badge";
 import { MaintenanceEventForm } from "@/components/maintenance-event-form";
 import { QuickAddEvent } from "@/components/quick-add-event";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,11 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  BIKE_SYSTEMS,
-  ETATS_CONSTATES,
-  NATURE_CHANGEMENT_TYPES,
-} from "@/lib/reference-data";
+import { BIKE_SYSTEMS, NATURE_CHANGEMENT_TYPES } from "@/lib/reference-data";
 import type { Intervention, MaintenanceEvent } from "@/lib/types";
 
 function formatDate(date: string) {
@@ -236,25 +232,8 @@ export function MaintenanceSection({
                       {formatCost(event.cost)}
                     </span>
                   </div>
-                  {/* Le libellé est toujours écrit : la couleur ne porte jamais
-                      le sens seule. */}
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {event.etat_constate ? (
-                      <Badge
-                        variant={
-                          event.etat_constate === "hs" ? "destructive" : "outline"
-                        }
-                      >
-                        {ETATS_CONSTATES[event.etat_constate]}
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="border-dashed font-normal text-muted-foreground"
-                      >
-                        État non renseigné
-                      </Badge>
-                    )}
+                    <EtatBadge etat={event.etat_constate} />
                   </div>
                   <div className="mt-2 flex flex-wrap justify-end gap-1">
                     <Button

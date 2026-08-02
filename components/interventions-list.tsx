@@ -82,8 +82,8 @@ function InterventionRow({
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-2 font-medium">
               <span className="truncate">{intervention.title}</span>
-              {isOpen && <Badge variant="secondary">En cours</Badge>}
-              {enRetard && <Badge variant="destructive">En retard</Badge>}
+              {isOpen && <Badge variant="info">En cours</Badge>}
+              {enRetard && <Badge variant="alert">En retard</Badge>}
             </p>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {subtitle} · {stat.count} action{stat.count > 1 ? "s" : ""}
