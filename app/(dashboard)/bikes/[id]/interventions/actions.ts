@@ -183,27 +183,32 @@ export async function closeIntervention(
   return { error: null };
 }
 
-// Renvoie l'erreur plutôt que de la lever : le refus de suppression est un cas
-// métier attendu dont le message doit atteindre l'utilisateur (Next masque le
-// message des exceptions de server action en production).
+/**
+ * Supprime une intervention **et ses actions**.
+ *
+ * Le refus précédent — « déplace d'abord tes actions » — rendait ineffaçable
+ * toute intervention ouverte par erreur dès qu'on y avait consigné quelque
+ * chose, c'est-à-dire le cas courant. La protection ne disparaît pas pour
+ * autant : elle passe dans la confirmation, qui annonce combien d'actions
+ * seront perdues. C'est le seul endroit de l'application où de l'historique de
+ * maintenance disparaît sans supprimer le vélo entier.
+ *
+ * Renvoie l'erreur plutôt que de la lever : Next masque le message des
+ * exceptions de server action en production.
+ */
 export async function deleteIntervention(
   interventionId: string,
   bikeId: string
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
 
-  // Une intervention qui porte encore des changements n'est pas supprimable :
-  // l'historique de maintenance ne doit pas disparaître silencieusement.
-  const { count } = await supabase
+  const { error: eventsError } = await supabase
     .from("maintenance_events")
-    .select("id", { count: "exact", head: true })
+    .delete()
     .eq("intervention_id", interventionId);
 
-  if (count && count > 0) {
-    return {
-      error:
-        "Cette intervention contient encore des changements de pièces. Déplace-les ou supprime-les d'abord.",
-    };
+  if (eventsError) {
+    return { error: "La suppression des actions a échoué." };
   }
 
   const { error } = await supabase

@@ -8,6 +8,7 @@ import {
   openBike,
   openIntervention,
   pickChip,
+  planifierIntervention,
   pickSystem,
   testBikeName,
 } from "./support";
@@ -52,6 +53,8 @@ test.describe.configure({ mode: "serial" });
 
 const bikeName = testBikeName("Action");
 const chantier = "[TEST] Révision de printemps";
+// Un chantier vide, qui sert aux scénarios n'enregistrant rien.
+const preparatoire = "[TEST] Contrôle avant sortie";
 
 const ACTION_GROUP = "Qu'est-ce que tu as fait ?";
 const ETAT_GROUP = "Dans quel état tu l'as trouvée ?";
@@ -62,6 +65,8 @@ test("US#4 – Créer un vélo de test (action)", async ({ page }) => {
 
 test("US#30 – On ajoute une action, plus une pièce", async ({ page }) => {
   await openBike(page, bikeName);
+  await planifierIntervention(page, preparatoire);
+  await openIntervention(page, preparatoire);
 
   // Le vocabulaire suit le modèle : on ajoute une action, pas une pièce.
   await expect(
@@ -80,6 +85,7 @@ test("US#30 – Impossible d'enregistrer sans action ni état", async ({
   page,
 }) => {
   await openBike(page, bikeName);
+  await openIntervention(page, preparatoire);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
@@ -107,25 +113,24 @@ test("US#30 – Enchaîner plusieurs actions sur le même chantier", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Ajouter une action" }).click();
+  await planifierIntervention(page, chantier);
+  await openIntervention(page, chantier);
 
+  await page.getByRole("button", { name: "Ajouter une action" }).click();
   const dialog = page.getByRole("dialog");
   const encore = dialog.getByRole("button", {
     name: "Enregistrer et ajouter une autre action",
   });
 
-  // Première action : elle ouvre le chantier.
+  // Première action : elle fait passer le chantier « en cours ».
   await pickChip(dialog, ACTION_GROUP, "Entretien");
   await dialog.getByLabel(/Sur quelle pièce/).fill("[TEST] Chaîne");
   await pickSystem(page, dialog, "Transmission");
   await pickChip(dialog, ETAT_GROUP, "Usure normale");
   await dialog.getByLabel("Coût (€)").fill("30");
-  await dialog.getByLabel(/Tu démarres un nouveau chantier/).fill(chantier);
-  await pickChip(dialog, "Pourquoi ce chantier ?", "Prévention");
   await encore.click();
 
-  // Le formulaire reste ouvert, vidé, sur le même chantier — et ne redemande
-  // ni titre ni cause : le second chantier serait refusé par l'index unique.
+  // Le formulaire reste ouvert et vidé, sur le même chantier.
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel(/Sur quelle pièce/)).toHaveValue("");
   await expect(
@@ -134,10 +139,6 @@ test("US#30 – Enchaîner plusieurs actions sur le même chantier", async ({
       exact: true,
     })
   ).toHaveAttribute("aria-pressed", "false");
-  await expect(
-    dialog.getByLabel(/Tu démarres un nouveau chantier/)
-  ).toBeHidden();
-  await expect(dialog.getByText(chantier)).toBeVisible();
 
   // Seconde action, enregistrée pour de bon cette fois.
   await pickChip(dialog, ACTION_GROUP, "Réparation");
@@ -148,14 +149,15 @@ test("US#30 – Enchaîner plusieurs actions sur le même chantier", async ({
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
-  // Les deux actions sont bien dans un seul et même chantier.
-  await expect(group(page, "En cours").getByRole("link")).toHaveCount(1);
-  await openIntervention(page, chantier);
+  // Les deux actions sont bien dans un seul et même chantier, désormais ouvert.
   await expect(page.getByTestId("action")).toHaveCount(2);
+  await openBike(page, bikeName);
+  await expect(group(page, "En cours").getByRole("link")).toHaveCount(1);
 });
 
 test("US#30 – La cause n'est plus demandée à la pièce", async ({ page }) => {
   await openBike(page, bikeName);
+  await openIntervention(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
@@ -170,6 +172,7 @@ test("US#30 – Enregistrer une inspection qui ne change rien", async ({
   page,
 }) => {
   await openBike(page, bikeName);
+  await openIntervention(page, chantier);
 
   // Rien n'est remplacé, rien n'est dépensé — et c'est pourtant la donnée la
   // plus utile : cette pièce allait bien à ce kilométrage.
@@ -180,7 +183,6 @@ test("US#30 – Enregistrer une inspection qui ne change rien", async ({
     etat: "Neuf",
   });
 
-  await openIntervention(page, chantier);
   const ligne = page
     .getByTestId("action")
     .filter({ hasText: "[TEST] Plaquettes" });

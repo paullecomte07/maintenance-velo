@@ -1,8 +1,8 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-// Helpers partagés par les parcours US#23 / US#24 / US#25. Chaque spec crée son
-// propre vélo préfixé [TEST] et le supprime en fin de parcours : les données
-// réelles ne sont jamais touchées.
+// Helpers partagés par les parcours. Chaque spec crée son propre vélo préfixé
+// [TEST] et le supprime en fin de parcours : les données réelles ne sont
+// jamais touchées.
 
 export function testBikeName(suffix: string) {
   return `[TEST] ${suffix} ${Date.now()}`;
@@ -33,8 +33,17 @@ export async function openBike(page: Page, name: string) {
   await expect(page).toHaveURL(/\/bikes\/[0-9a-f-]+$/);
 }
 
+/**
+ * Déplie la fiche d'identité, où vivent désormais « Modifier » et
+ * « Supprimer » : l'entête du vélo ne porte plus aucun bouton.
+ */
+export async function ouvrirFicheIdentite(page: Page) {
+  await page.getByText("Fiche d'identité").click();
+}
+
 export async function deleteBike(page: Page, name: string) {
   await openBike(page, name);
+  await ouvrirFicheIdentite(page);
   await page
     .getByRole("button", { name: "Supprimer", exact: true })
     .first()
@@ -57,13 +66,6 @@ export type PieceInput = {
   etat?: string;
   cout?: string;
   date?: string;
-  /** Nom du chantier à ouvrir, quand aucun n'est en cours. */
-  nouveauChantier?: string;
-  /**
-   * Cause du chantier ouvert. N'a de sens qu'avec `nouveauChantier` : la cause
-   * vaut pour toute l'intervention et n'est demandée qu'à son ouverture.
-   */
-  causeChantier?: string;
   /**
    * Système à choisir. Obligatoire dès que le titre n'appartient pas au
    * référentiel des organes — c'est le cas de tous nos titres préfixés
@@ -73,9 +75,8 @@ export type PieceInput = {
 };
 
 /**
- * Choisit une puce dans le groupe nommé. Le passage par le groupe n'est pas
- * décoratif : « Accident » est proposé aussi bien comme cause d'un chantier que
- * comme cause d'une pièce, dans le même formulaire.
+ * Choisit une puce dans le groupe nommé. Le passage par le groupe évite les
+ * collisions de libellés entre deux référentiels d'un même écran.
  */
 export async function pickChip(
   scope: Locator,
@@ -124,7 +125,11 @@ export async function pickSystem(page: Page, dialog: Locator, label: string) {
 export async function fillPiece(page: Page, piece: PieceInput) {
   const dialog = page.getByRole("dialog");
 
-  await pickChip(dialog, "Qu'est-ce que tu as fait ?", piece.nature ?? "Entretien");
+  await pickChip(
+    dialog,
+    "Qu'est-ce que tu as fait ?",
+    piece.nature ?? "Entretien"
+  );
 
   await dialog.getByLabel(/Sur quelle pièce/).fill(piece.titre);
 
@@ -140,23 +145,15 @@ export async function fillPiece(page: Page, piece: PieceInput) {
 
   if (piece.date) await dialog.getByLabel("Date *").fill(piece.date);
   if (piece.cout) await dialog.getByLabel("Coût (€)").fill(piece.cout);
-  if (piece.nouveauChantier) {
-    await dialog
-      .getByLabel(/Tu démarres un nouveau chantier/)
-      .fill(piece.nouveauChantier);
-    // Obligatoire à l'ouverture d'un chantier : le bouton reste inactif sans.
-    await pickChip(
-      dialog,
-      "Pourquoi ce chantier ?",
-      piece.causeChantier ?? "Prévention"
-    );
-  }
 
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 }
 
-/** Ouvre le formulaire depuis la fiche vélo ou la fiche d'un chantier. */
+/**
+ * Ouvre le formulaire depuis la fiche d'un chantier — le seul endroit d'où
+ * l'on saisit désormais : la fiche vélo ne propose plus d'ajouter une action.
+ */
 export async function addPiece(page: Page, piece: PieceInput) {
   await page.getByRole("button", { name: "Ajouter une action" }).click();
   await fillPiece(page, piece);
@@ -166,6 +163,22 @@ export async function addPiece(page: Page, piece: PieceInput) {
 export async function openIntervention(page: Page, title: string) {
   await page.getByRole("link").filter({ hasText: title }).first().click();
   await expect(page).toHaveURL(/\/interventions\/[0-9a-f-]+$/);
+}
+
+/**
+ * Parcours complet d'un chantier : le planifier depuis la fiche vélo, l'ouvrir,
+ * puis y saisir une première action — ce qui le fait passer « en cours ».
+ * C'est devenu le seul chemin pour démarrer un chantier.
+ */
+export async function ouvrirChantier(
+  page: Page,
+  titre: string,
+  piece: PieceInput,
+  { cause = "Prévention" }: { cause?: string } = {}
+) {
+  await planifierIntervention(page, titre, { cause });
+  await openIntervention(page, titre);
+  await addPiece(page, piece);
 }
 
 /** Le groupe « En cours », « À venir » ou « Terminées » de la fiche vélo. */

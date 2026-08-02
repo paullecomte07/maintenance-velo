@@ -42,10 +42,6 @@ import {
 //   Quand je renseigne l'action, la pièce et l'état mais laisse le coût vide
 //   Alors la pièce est enregistrée
 //   Et son coût apparaît comme non renseigné
-// Scénario: Corriger le rattachement proposé [US#24]
-//   Étant donné qu'une intervention "Révision de printemps" est en cours
-//   Quand je saisis une pièce et que je change l'intervention proposée
-//   Alors la pièce est rattachée à l'intervention que j'ai choisie
 //
 // Parcours en série sur un vélo de test préfixé [TEST], supprimé à la fin.
 test.describe.configure({ mode: "serial" });
@@ -62,6 +58,8 @@ test("US#24 – Le kilométrage est pré-rempli avec le dernier relevé", async 
   page,
 }) => {
   await openBike(page, bikeName);
+  await planifierIntervention(page, chantier);
+  await openIntervention(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
@@ -74,6 +72,7 @@ test("US#24 – Le kilométrage est pré-rempli avec le dernier relevé", async 
 
 test("US#24 – Le système se déduit de la pièce choisie", async ({ page }) => {
   await openBike(page, bikeName);
+  await openIntervention(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
@@ -91,6 +90,7 @@ test("US#24 – Une pièce ambiguë propose les systèmes concernés", async ({
   page,
 }) => {
   await openBike(page, bikeName);
+  await openIntervention(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
@@ -111,15 +111,14 @@ test("US#24 – Enregistrer une pièce quand aucun chantier n'est ouvert", async
   page,
 }) => {
   await openBike(page, bikeName);
+  await openIntervention(page, chantier);
 
   await addPiece(page, {
     titre: "[TEST] Chaîne",
     systeme: "Transmission",
     cout: "30",
-    nouveauChantier: chantier,
   });
 
-  await openIntervention(page, chantier);
   await expect(page.getByText("[TEST] Chaîne")).toBeVisible();
   await expect(page.getByText("En cours").first()).toBeVisible();
 });
@@ -128,55 +127,33 @@ test("US#24 – Enregistrer une pièce quand un chantier est ouvert", async ({
   page,
 }) => {
   await openBike(page, bikeName);
+  await openIntervention(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
+  // Aucune question sur l'intervention : on saisit depuis sa fiche, elle est
+  // donc connue sans avoir à la choisir.
   const dialog = page.getByRole("dialog");
-  // Aucune question sur l'intervention, mais le rattachement est annoncé.
+  await expect(dialog.getByLabel(/Sur quelle pièce/)).toBeVisible();
   await expect(
-    dialog.getByLabel(/Tu démarres un nouveau chantier/)
+    dialog.getByRole("combobox", { name: "Rattacher à" })
   ).toBeHidden();
-  await expect(dialog.getByText(chantier)).toBeVisible();
 });
 
 test("US#24 – Enregistrer une pièce sans en connaître le coût", async ({
   page,
 }) => {
   await openBike(page, bikeName);
+  await openIntervention(page, chantier);
 
   await addPiece(page, {
     titre: "[TEST] Câbles et gaines de vitesses",
     systeme: "Transmission",
   });
 
-  await openIntervention(page, chantier);
   const ligne = page
     .getByTestId("action")
     .filter({ hasText: "[TEST] Câbles et gaines de vitesses" });
   await expect(ligne).toContainText("—");
-});
-
-test("US#24 – Corriger le rattachement proposé", async ({ page }) => {
-  await openBike(page, bikeName);
-
-  // Une intervention de destination, planifiée.
-  await planifierIntervention(page, autreChantier);
-
-  await page.getByRole("button", { name: "Ajouter une action" }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Sur quelle pièce/).fill("[TEST] Pneus");
-  await pickSystem(page, dialog, "Roue arrière");
-  await pickChip(dialog, "Qu'est-ce que tu as fait ?", "Entretien");
-  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "Usure normale");
-
-  // On corrige le rattachement proposé.
-  await dialog.getByRole("button", { name: "Changer" }).click();
-  await dialog.getByRole("combobox", { name: "Rattacher à" }).click();
-  await page.getByRole("option", { name: autreChantier }).click();
-  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
-  await expect(dialog).toBeHidden({ timeout: 15000 });
-
-  await openIntervention(page, autreChantier);
-  await expect(page.getByText("[TEST] Pneus")).toBeVisible();
 });
 
 test("US#4 – Supprimer le vélo de test (saisie)", async ({ page }) => {

@@ -175,14 +175,15 @@ export function MaintenanceSection({
   bikeId,
   events,
   interventions,
-  fixedInterventionId,
+  interventionId,
   lastMileageKm,
 }: {
   bikeId: string;
   events: MaintenanceEvent[];
   /** Toutes les interventions du vélo — nécessaires pour le déplacement. */
   interventions: Intervention[];
-  fixedInterventionId?: string;
+  /** Le chantier dont on liste les actions. */
+  interventionId: string;
   lastMileageKm?: number | null;
 }) {
   const [editEvent, setEditEvent] = useState<MaintenanceEvent | null>(null);
@@ -199,8 +200,7 @@ export function MaintenanceSection({
         <CardTitle className="text-lg">Actions réalisées</CardTitle>
         <QuickAddEvent
           bikeId={bikeId}
-          interventions={interventions}
-          fixedInterventionId={fixedInterventionId}
+          interventionId={interventionId}
           lastMileageKm={lastMileageKm}
         />
       </CardHeader>
@@ -307,8 +307,7 @@ export function MaintenanceSection({
               key={editEvent.id}
               action={updateEvent.bind(null, editEvent.id, bikeId)}
               event={editEvent}
-              interventions={interventions}
-              fixedInterventionId={fixedInterventionId}
+              interventionId={interventionId}
               lastMileageKm={lastMileageKm}
               onSuccess={() => setEditEvent(null)}
             />

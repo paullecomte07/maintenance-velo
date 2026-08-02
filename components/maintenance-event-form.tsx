@@ -21,17 +21,14 @@ import {
   BIKE_SYSTEMS,
   ETAT_CONSTATE_DESCRIPTIONS,
   ETATS_CONSTATES,
-  INTERVENTION_CAUSE_DESCRIPTIONS,
-  INTERVENTION_CAUSES,
   NATURE_CHANGEMENT_DESCRIPTIONS,
   NATURE_CHANGEMENT_TYPES,
   systemsForPart,
   type BikeSystem,
   type EtatConstate,
-  type InterventionCause,
   type NatureChangementType,
 } from "@/lib/reference-data";
-import type { Intervention, MaintenanceEvent } from "@/lib/types";
+import type { MaintenanceEvent } from "@/lib/types";
 import type { EventFormState } from "@/app/(dashboard)/bikes/[id]/actions";
 
 function SubmitButton({
@@ -58,16 +55,16 @@ function SubmitButton({
   );
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("fr-FR");
-}
-
+/**
+ * Saisie d'une action. L'intervention est **toujours** connue à l'avance :
+ * on n'entre dans ce formulaire que depuis la fiche d'un chantier. C'est ce
+ * qui a permis de retirer la question du titre et de la cause au milieu de la
+ * saisie — l'intervention n'est plus un effet de bord de la première action.
+ */
 export function MaintenanceEventForm({
   action,
   event,
-  interventions,
-  fixedInterventionId,
-  openIntervention,
+  interventionId,
   lastMileageKm,
   onSuccess,
 }: {
@@ -76,11 +73,8 @@ export function MaintenanceEventForm({
     formData: FormData
   ) => Promise<EventFormState>;
   event?: MaintenanceEvent;
-  interventions: Intervention[];
-  /** Saisie depuis la fiche d'un chantier : le rattachement est imposé. */
-  fixedInterventionId?: string;
-  /** Chantier ouvert du vélo, s'il y en a un : rattachement automatique. */
-  openIntervention?: Intervention | null;
+  /** Chantier auquel l'action est rattachée. */
+  interventionId: string;
   /** Dernier kilométrage connu, proposé par défaut. */
   lastMileageKm?: number | null;
   onSuccess: () => void;
@@ -99,15 +93,6 @@ export function MaintenanceEventForm({
   const [etatConstate, setEtatConstate] = useState<EtatConstate | null>(
     event?.etat_constate ?? null
   );
-  // Cause du *chantier*, demandée uniquement quand cette action en ouvre un.
-  const [interventionCause, setInterventionCause] =
-    useState<InterventionCause | null>(null);
-  // Rattachement : vide = « laisse le serveur décider » (chantier ouvert, ou
-  // ouverture d'un nouveau chantier). Renseigné = correction explicite.
-  const [interventionId, setInterventionId] = useState(
-    event?.intervention_id ?? ""
-  );
-  const [editingAttachment, setEditingAttachment] = useState(false);
   const datalistId = useId();
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -115,15 +100,6 @@ export function MaintenanceEventForm({
   // plutôt qu'un state, parce qu'elle est lue dans l'effet de succès et ne doit
   // déclencher aucun rendu.
   const continuer = useRef(false);
-  /**
-   * Chantier ouvert par la première action de la série. Sans lui, la seconde
-   * action redemanderait un titre et tenterait d'ouvrir un *second* chantier —
-   * refusé par l'index unique « un seul chantier ouvert par vélo ».
-   */
-  const [chantierOuvert, setChantierOuvert] = useState<{
-    id: string;
-    title: string;
-  } | null>(null);
 
   // Les systèmes candidats pour l'organe saisi. Un seul candidat renseigne le
   // système sans rien demander ; plusieurs les proposent côte à côte.
@@ -139,9 +115,8 @@ export function MaintenanceEventForm({
     if (!state.success) return;
 
     if (continuer.current) {
-      // On reste dans le formulaire pour la pièce suivante du même chantier.
+      // On reste dans le formulaire pour l'action suivante du même chantier.
       continuer.current = false;
-      if (state.intervention) setChantierOuvert(state.intervention);
       setTitle("");
       setSystem(null);
       setNatureChangement(null);
@@ -156,41 +131,11 @@ export function MaintenanceEventForm({
   }, [state, event, onSuccess]);
 
   const today = new Date().toISOString().slice(0, 10);
-  // Le chantier ouvert par l'action précédente n'est pas encore dans
-  // `interventions` : cette liste vient du serveur et date de l'ouverture du
-  // formulaire. On l'affiche à partir de ce que l'action a renvoyé.
-  const attachedTo: Pick<Intervention, "id" | "title" | "started_at"> | null =
-    fixedInterventionId
-      ? (interventions.find((i) => i.id === fixedInterventionId) ?? null)
-      : chantierOuvert
-        ? { ...chantierOuvert, started_at: null }
-        : (openIntervention ?? null);
-  // Un chantier existe déjà (imposé, ouvert, ou ouvert par l'action
-  // précédente de cette série) : on ne demande ni titre ni cause.
-  const needsNewChantier =
-    !fixedInterventionId && !openIntervention && !chantierOuvert && !event;
-  const incomplete =
-    !system ||
-    !natureChangement ||
-    !etatConstate ||
-    (needsNewChantier && !interventionCause);
+  const incomplete = !system || !natureChangement || !etatConstate;
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
-      {fixedInterventionId && (
-        <input
-          type="hidden"
-          name="intervention_id"
-          value={fixedInterventionId}
-        />
-      )}
-      {!fixedInterventionId && (interventionId || chantierOuvert) && (
-        <input
-          type="hidden"
-          name="intervention_id"
-          value={interventionId || chantierOuvert?.id || ""}
-        />
-      )}
+      <input type="hidden" name="intervention_id" value={interventionId} />
 
       {/* L'action d'abord : c'est elle l'unité de saisie. Ouvrir sur la pièce
           rendait l'inspection absurde — on n'a rien changé, et il fallait
@@ -344,113 +289,12 @@ export function MaintenanceEventForm({
         </div>
       </div>
 
-      {needsNewChantier && (
-        <div className="space-y-3 rounded-lg border border-dashed p-3">
-          <div className="space-y-2">
-            <Label htmlFor="new_intervention_title">
-              Tu démarres un nouveau chantier. Tu l&apos;appelles comment ? *
-            </Label>
-            <Input
-              id="new_intervention_title"
-              name="new_intervention_title"
-              required
-              placeholder="Ex : Révision de printemps"
-            />
-            <p className="text-xs text-muted-foreground">
-              Demandé une seule fois. Les actions suivantes s&apos;y rattacheront
-              seules, même dans plusieurs jours.
-            </p>
-          </div>
-
-          {/* La cause vaut pour tout le chantier : elle n'est demandée qu'ici,
-              jamais sur les actions suivantes. */}
-          <ChipGroup
-            label="Pourquoi ce chantier ?"
-            options={INTERVENTION_CAUSES}
-            value={interventionCause}
-            onChange={setInterventionCause}
-            hint={
-              interventionCause
-                ? INTERVENTION_CAUSE_DESCRIPTIONS[interventionCause]
-                : undefined
-            }
-          />
-          <input
-            type="hidden"
-            name="new_intervention_cause"
-            value={interventionCause ?? ""}
-          />
-        </div>
-      )}
-
-      {attachedTo && !fixedInterventionId && !event && (
-        <div className="rounded-lg border bg-muted/40 p-3 text-sm">
-          {editingAttachment ? (
-            <div className="space-y-2">
-              <Label>Rattacher à</Label>
-              <Select
-                value={interventionId || attachedTo.id}
-                onValueChange={setInterventionId}
-              >
-                <SelectTrigger aria-label="Rattacher à">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {interventions.map((intervention) => (
-                    <SelectItem key={intervention.id} value={intervention.id}>
-                      {intervention.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <p className="text-muted-foreground">
-              Rattaché à{" "}
-              <span className="font-medium text-foreground">
-                « {attachedTo.title} »
-              </span>
-              {attachedTo.started_at &&
-                `, ouvert depuis le ${formatDate(attachedTo.started_at)}`}
-              .{" "}
-              <button
-                type="button"
-                className="font-medium text-foreground underline underline-offset-4"
-                onClick={() => setEditingAttachment(true)}
-              >
-                Changer
-              </button>
-            </p>
-          )}
-        </div>
-      )}
-
-      {event && !fixedInterventionId && (
-        <div className="space-y-2">
-          <Label>Intervention de rattachement</Label>
-          <Select value={interventionId} onValueChange={setInterventionId}>
-            <SelectTrigger aria-label="Intervention de rattachement">
-              <SelectValue placeholder="Sélectionner une intervention" />
-            </SelectTrigger>
-            <SelectContent>
-              {interventions.map((intervention) => (
-                <SelectItem key={intervention.id} value={intervention.id}>
-                  {intervention.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         {incomplete && (
           <p className="text-xs text-muted-foreground">
-            {needsNewChantier
-              ? "Choisis l'action, le système, l'état et la cause du chantier pour enregistrer."
-              : "Choisis l'action, le système et l'état pour enregistrer."}
+            Choisis l&apos;action, le système et l&apos;état pour enregistrer.
           </p>
         )}
         {/* Un chantier compte 1 à 4 pièces : sans ce second bouton, chacune

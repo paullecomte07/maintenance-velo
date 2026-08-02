@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  addPiece,
   createBike,
   deleteBike,
   group,
@@ -54,12 +55,10 @@ test("US#4 – Créer un vélo de test (cause)", async ({ page }) => {
 
 test("US#29 – Ouvrir un chantier demande sa cause", async ({ page }) => {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Ajouter une action" }).click();
+  await page.getByRole("button", { name: "Planifier une intervention" }).click();
 
   const dialog = page.getByRole("dialog");
   const cause = dialog.getByRole("group", { name: "Pourquoi ce chantier ?" });
-
-  // La question n'apparaît que parce qu'aucun chantier n'est ouvert.
   await expect(cause).toBeVisible();
 
   // Aucune valeur pré-cochée : une cause par défaut falsifierait exactement la
@@ -78,17 +77,13 @@ test("US#29 – Ouvrir un chantier demande sa cause", async ({ page }) => {
 
 test("US#29 – Impossible d'enregistrer sans cause", async ({ page }) => {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Ajouter une action" }).click();
+  await page.getByRole("button", { name: "Planifier une intervention" }).click();
 
   const dialog = page.getByRole("dialog");
   const ajouter = dialog.getByRole("button", { name: "Ajouter", exact: true });
 
-  // Tout est renseigné sauf la cause du chantier.
-  await dialog.getByLabel(/Sur quelle pièce/).fill("[TEST] Cintre");
-  await pickSystem(page, dialog, "Direction");
-  await pickChip(dialog, "Qu'est-ce que tu as fait ?", "Réparation");
-  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "HS");
-  await dialog.getByLabel(/Tu démarres un nouveau chantier/).fill(chantier);
+  // Tout est renseigné sauf la cause.
+  await dialog.getByLabel(/Nom de l.intervention/).fill(chantier);
   await expect(ajouter).toBeDisabled();
 
   // Elle seule débloque l'enregistrement.
@@ -97,6 +92,15 @@ test("US#29 – Impossible d'enregistrer sans cause", async ({ page }) => {
 
   await ajouter.click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
+
+  // Puis une action, qui fait passer le chantier « en cours ».
+  await openIntervention(page, chantier);
+  await addPiece(page, {
+    titre: "[TEST] Cintre",
+    systeme: "Direction",
+    nature: "Réparation",
+    etat: "HS",
+  });
 });
 
 test("US#29 – La cause est visible sur la fiche du vélo", async ({ page }) => {
@@ -112,11 +116,12 @@ test("US#29 – La cause n'est demandée qu'une fois par chantier", async ({
   page,
 }) => {
   await openBike(page, bikeName);
+  await openIntervention(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
-  // Le chantier ouvert porte déjà sa cause : on ne la redemande pas.
-  await expect(dialog.getByText(/Rattaché à/)).toBeVisible();
+  // Le chantier porte déjà sa cause : le formulaire d'action ne la redemande
+  // jamais, ni pour le chantier ni pour la pièce.
   await expect(
     dialog.getByRole("group", { name: "Pourquoi ce chantier ?" })
   ).toBeHidden();

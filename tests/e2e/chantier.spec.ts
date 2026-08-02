@@ -1,14 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  addPiece,
   createBike,
   deleteBike,
   group,
   isoDaysAgo,
   openBike,
   openIntervention,
-  pickChip,
-  pickSystem,
+  ouvrirChantier,
   planifierIntervention,
   testBikeName,
 } from "./support";
@@ -16,14 +16,9 @@ import {
 // Tests E2E — US#23 (Chantier d'entretien ouvert sur plusieurs jours)
 // Scénario: Rattacher une pièce à un chantier ouvert trois jours plus tôt [US#23]
 //   Étant donné qu'une intervention "Révision de printemps" est en cours sur mon vélo depuis trois jours
-//   Quand j'enregistre un changement de pièce daté d'aujourd'hui
-//   Alors la pièce est rattachée à l'intervention "Révision de printemps"
+//   Quand j'enregistre une action datée d'aujourd'hui depuis sa fiche
+//   Alors l'action est rattachée à l'intervention "Révision de printemps"
 //   Et l'intervention reste en cours
-// Scénario: Nommer le chantier à son ouverture [US#23]
-//   Étant donné qu'aucune intervention n'est en cours sur mon vélo
-//   Quand j'enregistre un changement de pièce
-//   Alors l'application me demande le titre du nouveau chantier
-//   Et l'intervention créée porte le titre que j'ai saisi
 // Scénario: Un seul chantier ouvert par vélo [US#23]
 //   Étant donné qu'une intervention est déjà en cours sur mon vélo
 //   Quand je consulte la fiche de ce vélo
@@ -69,54 +64,29 @@ test("US#4 – Créer un vélo de test (chantier)", async ({ page }) => {
   await createBike(page, bikeName);
 });
 
-test("US#23 – Nommer le chantier à son ouverture", async ({ page }) => {
-  await openBike(page, bikeName);
-
-  await page.getByRole("button", { name: "Ajouter une action" }).click();
-  const dialog = page.getByRole("dialog");
-
-  // Aucun chantier ouvert : le titre est demandé, et jamais généré.
-  await expect(
-    dialog.getByLabel(/Tu démarres un nouveau chantier/)
-  ).toBeVisible();
-
-  await dialog.getByLabel(/Sur quelle pièce/).fill(piece1);
-  await pickSystem(page, dialog, "Transmission");
-  await pickChip(dialog, "Qu'est-ce que tu as fait ?", "Entretien");
-  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "Usure normale");
-  await dialog.getByLabel("Date *").fill(isoDaysAgo(3));
-  await dialog.getByLabel("Coût (€)").fill("30");
-  await dialog.getByLabel(/Tu démarres un nouveau chantier/).fill(chantier);
-  await pickChip(dialog, "Pourquoi ce chantier ?", "Prévention");
-  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
-  await expect(dialog).toBeHidden({ timeout: 15000 });
-
-  await expect(group(page, "En cours").getByText(chantier)).toBeVisible();
-});
-
 test("US#23 – Rattacher une pièce à un chantier ouvert trois jours plus tôt", async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   await openBike(page, bikeName);
 
-  // Aucune question sur le regroupement : le chantier ouvert reçoit la pièce,
-  // bien que sa date diffère de celle de l'ouverture.
-  await page.getByRole("button", { name: "Ajouter une action" }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText(new RegExp(`Rattaché à`))).toBeVisible();
-  await expect(
-    dialog.getByLabel(/Tu démarres un nouveau chantier/)
-  ).toBeHidden();
+  // Le chantier est ouvert par sa première action, datée d'il y a trois jours.
+  await ouvrirChantier(page, chantier, {
+    titre: piece1,
+    systeme: "Transmission",
+    cout: "30",
+    date: isoDaysAgo(3),
+  });
 
-  await dialog.getByLabel(/Sur quelle pièce/).fill(piece2);
-  await pickSystem(page, dialog, "Transmission");
-  await pickChip(dialog, "Qu'est-ce que tu as fait ?", "Réparation");
-  await pickChip(dialog, "Dans quel état tu l'as trouvée ?", "Usure normale");
-  await dialog.getByLabel("Coût (€)").fill("20");
-  await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
-  await expect(dialog).toBeHidden({ timeout: 15000 });
+  // Une action d'aujourd'hui s'y ajoute : c'est l'état du chantier qui décide
+  // du rattachement, pas la date.
+  await addPiece(page, {
+    titre: piece2,
+    systeme: "Transmission",
+    nature: "Réparation",
+    cout: "20",
+  });
 
-  await openIntervention(page, chantier);
   await expect(
     page.getByTestId("action").filter({ hasText: piece1 })
   ).toBeVisible();

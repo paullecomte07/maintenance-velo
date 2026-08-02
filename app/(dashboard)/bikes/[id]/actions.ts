@@ -7,24 +7,13 @@ import { ANALYSIS_SYSTEM_PROMPT } from "@/lib/prompts/analysis-prompt";
 import {
   BIKE_CATEGORIES,
   BIKE_SYSTEMS,
-  CAUSE_MANQUANTE,
   ETATS_CONSTATES,
   NATURE_CHANGEMENT_TYPES,
-  parseInterventionCause,
 } from "@/lib/reference-data";
 import { createClient } from "@/lib/supabase/server";
-import { NEW_INTERVENTION, type Bike, type MaintenanceEvent } from "@/lib/types";
+import type { Bike, MaintenanceEvent } from "@/lib/types";
 
-export type EventFormState = {
-  error: string | null;
-  success: boolean;
-  /**
-   * Chantier auquel l'action vient d'être rattachée. Renvoyé pour que le
-   * formulaire puisse enchaîner : sans lui, la seconde action d'une série
-   * tenterait d'ouvrir un *second* chantier, refusé par l'index unique.
-   */
-  intervention?: { id: string; title: string };
-};
+export type EventFormState = { error: string | null; success: boolean };
 
 export type AnalysisState = {
   error: string | null;
@@ -52,77 +41,63 @@ function eventPayload(formData: FormData) {
 }
 
 /**
- * Détermine le chantier auquel rattacher une action, sans jamais poser la
- * question quand on peut y répondre :
+ * L'intervention est toujours connue : on n'entre dans la saisie que depuis sa
+ * fiche. Consigner du travail fait la fait donc **démarrer** si elle était
+ * seulement prévue — une intervention ne peut pas rester « à venir » alors
+ * qu'elle porte des actions réalisées.
  *
- *   1. un rattachement explicite (correction depuis le formulaire) gagne ;
- *   2. sinon, le chantier ouvert du vélo — quelle que soit la date de l'action,
- *      c'est ce qui permet à un chantier de s'étaler sur plusieurs jours ;
- *   3. sinon seulement, on demande un titre et on ouvre un nouveau chantier.
- *
- * Le titre est toujours saisi par l'utilisateur : aucun nom n'est généré.
+ * Le refus reprend mot pour mot celui de « Démarrer ce chantier » : l'index
+ * unique n'autorise qu'un seul chantier ouvert par vélo, et un message clair
+ * vaut mieux qu'une erreur de contrainte.
  */
-async function resolveInterventionId(
+async function ensureStarted(
   supabase: ReturnType<typeof createClient>,
   bikeId: string,
-  formData: FormData
-): Promise<{ id: string; title: string } | { error: string }> {
-  const submitted = (formData.get("intervention_id") as string | null)?.trim();
-
-  if (submitted && submitted !== NEW_INTERVENTION) {
-    const { data } = await supabase
-      .from("interventions")
-      .select("id, title")
-      .eq("id", submitted)
-      .maybeSingle<{ id: string; title: string }>();
-
-    return data ?? { id: submitted, title: "" };
-  }
-
-  if (!submitted) {
-    const { data: open } = await supabase
-      .from("interventions")
-      .select("id, title")
-      .eq("bike_id", bikeId)
-      .not("started_at", "is", null)
-      .is("closed_at", null)
-      .maybeSingle<{ id: string; title: string }>();
-
-    if (open) {
-      return open;
-    }
-  }
-
-  const title = (formData.get("new_intervention_title") as string)?.trim();
-  if (!title) {
-    return { error: "Donne un nom au chantier que tu démarres." };
-  }
-
-  // La cause vaut pour tout le chantier : elle n'est demandée qu'à son
-  // ouverture, jamais sur les actions suivantes.
-  const cause = parseInterventionCause(formData.get("new_intervention_cause"));
-  if (!cause) {
-    return { error: CAUSE_MANQUANTE };
-  }
-
-  const { data, error } = await supabase
+  interventionId: string,
+  date: string
+): Promise<{ error: string } | null> {
+  const { data: target } = await supabase
     .from("interventions")
-    .insert({
-      bike_id: bikeId,
-      title,
-      cause,
-      started_at:
-        (formData.get("date") as string) ?? new Date().toISOString().slice(0, 10),
-      closed_at: null,
-    })
-    .select("id, title")
-    .single<{ id: string; title: string }>();
+    .select("id, started_at")
+    .eq("id", interventionId)
+    .eq("bike_id", bikeId)
+    .maybeSingle<{ id: string; started_at: string | null }>();
 
-  if (error || !data) {
-    return { error: "L'ouverture du chantier a échoué. Réessaie." };
+  if (!target) {
+    return { error: "Cette intervention est introuvable." };
+  }
+  // Déjà démarrée, ou terminée : on ne touche à rien. Compléter après coup une
+  // intervention clôturée reste possible.
+  if (target.started_at !== null) return null;
+
+  const { data: open } = await supabase
+    .from("interventions")
+    .select("title")
+    .eq("bike_id", bikeId)
+    .not("started_at", "is", null)
+    .is("closed_at", null)
+    .maybeSingle<{ title: string }>();
+
+  if (open) {
+    return {
+      error: `« ${open.title} » est déjà en cours sur ce vélo. Clôture-la avant d'en démarrer une autre.`,
+    };
   }
 
-  return data;
+  const { error } = await supabase
+    .from("interventions")
+    .update({ started_at: date })
+    .eq("id", interventionId);
+
+  if (error) {
+    return { error: "Le démarrage du chantier a échoué. Réessaie." };
+  }
+  return null;
+}
+
+function readInterventionId(formData: FormData): string | null {
+  const id = (formData.get("intervention_id") as string | null)?.trim();
+  return id || null;
 }
 
 export async function createEvent(
@@ -132,15 +107,27 @@ export async function createEvent(
 ): Promise<EventFormState> {
   const supabase = createClient();
 
-  const intervention = await resolveInterventionId(supabase, bikeId, formData);
-  if ("error" in intervention) {
-    return { error: intervention.error, success: false };
+  const interventionId = readInterventionId(formData);
+  if (!interventionId) {
+    return { error: "Aucune intervention sélectionnée.", success: false };
+  }
+
+  const payload = eventPayload(formData);
+
+  const started = await ensureStarted(
+    supabase,
+    bikeId,
+    interventionId,
+    payload.date
+  );
+  if (started) {
+    return { error: started.error, success: false };
   }
 
   const { error } = await supabase.from("maintenance_events").insert({
-    ...eventPayload(formData),
+    ...payload,
     bike_id: bikeId,
-    intervention_id: intervention.id,
+    intervention_id: interventionId,
   });
 
   if (error) {
@@ -152,8 +139,8 @@ export async function createEvent(
 
   revalidatePath(`/bikes/${bikeId}`);
   revalidatePath(`/bikes/${bikeId}/interventions`);
-  revalidatePath(`/bikes/${bikeId}/interventions/${intervention.id}`);
-  return { error: null, success: true, intervention };
+  revalidatePath(`/bikes/${bikeId}/interventions/${interventionId}`);
+  return { error: null, success: true };
 }
 
 export async function updateEvent(
@@ -164,14 +151,14 @@ export async function updateEvent(
 ): Promise<EventFormState> {
   const supabase = createClient();
 
-  const intervention = await resolveInterventionId(supabase, bikeId, formData);
-  if ("error" in intervention) {
-    return { error: intervention.error, success: false };
+  const interventionId = readInterventionId(formData);
+  if (!interventionId) {
+    return { error: "Aucune intervention sélectionnée.", success: false };
   }
 
   const { error } = await supabase
     .from("maintenance_events")
-    .update({ ...eventPayload(formData), intervention_id: intervention.id })
+    .update({ ...eventPayload(formData), intervention_id: interventionId })
     .eq("id", eventId);
 
   if (error) {
@@ -183,8 +170,8 @@ export async function updateEvent(
 
   revalidatePath(`/bikes/${bikeId}`);
   revalidatePath(`/bikes/${bikeId}/interventions`);
-  revalidatePath(`/bikes/${bikeId}/interventions/${intervention.id}`);
-  return { error: null, success: true, intervention };
+  revalidatePath(`/bikes/${bikeId}/interventions/${interventionId}`);
+  return { error: null, success: true };
 }
 
 /**
