@@ -6,10 +6,14 @@ import { headers } from "next/headers";
  * On préfère une valeur explicite : ces URLs partent dans des mails, et se
  * fier aveuglément à l'en-tête Host laisserait un tiers fabriquer un lien de
  * réinitialisation pointant ailleurs. Le repli sur les en-têtes ne sert qu'au
- * développement local, où NEXT_PUBLIC_SITE_URL n'est pas forcément défini.
+ * développement local, où SITE_URL n'est pas forcément défini.
+ *
+ * Volontairement sans préfixe NEXT_PUBLIC_ : cette valeur n'est lue que côté
+ * serveur, et le préfixe la figerait dans le bundle à la construction — il
+ * faudrait redéployer pour la changer.
  */
 export function siteOrigin() {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  const configured = process.env.SITE_URL;
   if (configured) return configured.replace(/\/$/, "");
 
   const headerList = headers();
