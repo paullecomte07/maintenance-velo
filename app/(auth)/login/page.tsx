@@ -49,6 +49,12 @@ function LoginForm() {
               puis connecte-toi.
             </p>
           )}
+          {searchParams.get("message") === "lien-invalide" && (
+            <p className="rounded-md bg-muted p-3 text-sm">
+              Ce lien n&apos;est plus valable. Connecte-toi, ou demande un
+              nouveau lien si tu as oublié ton mot de passe.
+            </p>
+          )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -60,7 +66,15 @@ function LoginForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Mot de passe</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="password">Mot de passe</Label>
+              <Link
+                href="/forgot-password"
+                className="text-sm text-muted-foreground underline underline-offset-4"
+              >
+                Mot de passe oublié ?
+              </Link>
+            </div>
             <Input
               id="password"
               name="password"

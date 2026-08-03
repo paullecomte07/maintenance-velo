@@ -30,6 +30,9 @@ export default async function DashboardLayout({
           <span className="hidden text-sm text-muted-foreground sm:inline">
             {user.email}
           </span>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/account">Mon compte</Link>
+          </Button>
           <form action={logout}>
             <Button variant="outline" size="sm" type="submit">
               Déconnexion
