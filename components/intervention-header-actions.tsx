@@ -1,5 +1,6 @@
 "use client";
 
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -15,12 +16,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Intervention, InterventionStatus } from "@/lib/types";
 
 /**
  * Actions du chantier : démarrer, clôturer, renommer, supprimer. La clôture
  * est toujours explicite — rien ne se ferme tout seul, un chantier peut dormir
  * des semaines sans être fini.
+ *
+ * Seul le geste du jour est un bouton. Renommer et supprimer se font une fois
+ * par an, voire jamais : au même poids visuel, « Supprimer » captait autant
+ * l'œil que ce qu'on venait faire. Même principe que la fiche vélo, où ces
+ * deux-là vivent déjà au bas de la fiche d'identité.
  */
 export function InterventionHeaderActions({
   bikeId,
@@ -56,41 +69,64 @@ export function InterventionHeaderActions({
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
-        {status === "a_venir" && (
-          <Button
-            size="sm"
-            disabled={isPending}
-            onClick={() => run(onStart, "Chantier démarré.")}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          {status === "a_venir" && (
+            <Button
+              size="sm"
+              disabled={isPending}
+              onClick={() => run(onStart, "Chantier démarré.")}
+            >
+              {isPending ? "…" : "Démarrer ce chantier"}
+            </Button>
+          )}
+          {status === "en_cours" && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => run(onClose, "Chantier clôturé.")}
+            >
+              {isPending ? "…" : "Clôturer"}
+            </Button>
+          )}
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            {/* 44 px : l'écran se consulte au garage, au doigt. */}
+            <Button
+              variant="outline"
+              className="ml-auto h-11 w-11 shrink-0 p-0"
+              aria-label="Réglages de l'intervention"
+            >
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          {/* Sans ça, la fermeture du menu reprend le focus et referme la
+              boîte de dialogue qu'elle vient d'ouvrir. */}
+          <DropdownMenuContent
+            align="end"
+            onCloseAutoFocus={(e) => e.preventDefault()}
           >
-            {isPending ? "…" : "Démarrer ce chantier"}
-          </Button>
-        )}
-        {status === "en_cours" && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isPending}
-            onClick={() => run(onClose, "Chantier clôturé.")}
-          >
-            {isPending ? "…" : "Clôturer"}
-          </Button>
-        )}
-        <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
-          Renommer
-        </Button>
-        {/* Le libellé reste court à l'écran, mais le nom accessible dit ce
-            qu'on supprime : chaque action de la liste porte elle aussi un
-            bouton « Supprimer », et rien d'autre ne les distinguerait. */}
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-destructive"
-          aria-label="Supprimer l'intervention"
-          onClick={() => setDeleteOpen(true)}
-        >
-          Supprimer
-        </Button>
+            <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+              <Pencil aria-hidden="true" />
+              Renommer
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {/* Le libellé dit ce qu'on supprime : chaque action de la liste
+                porte elle aussi un « Supprimer », et rien d'autre ne les
+                distinguerait. L'icône double la couleur, qui ne doit jamais
+                porter le sens seule. */}
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => setDeleteOpen(true)}
+            >
+              <Trash2 aria-hidden="true" />
+              Supprimer l&apos;intervention
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

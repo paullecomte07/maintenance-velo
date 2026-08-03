@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   addPiece,
+  choisirDansLeMenuChantier,
   createBike,
   deleteBike,
   group,
@@ -140,7 +141,7 @@ test("US#29 – Corriger la cause d'une intervention", async ({ page }) => {
 
   await expect(page.getByText("Accident").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Renommer" }).click();
+  await choisirDansLeMenuChantier(page, "Renommer");
   const dialog = page.getByRole("dialog");
   await pickChip(dialog, "Pourquoi ce chantier ?", "Dysfonctionnement");
   await dialog.getByRole("button", { name: "Enregistrer" }).click();

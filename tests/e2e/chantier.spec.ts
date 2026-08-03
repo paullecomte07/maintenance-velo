@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   addPiece,
+  choisirDansLeMenuChantier,
   createBike,
   deleteBike,
   group,
@@ -122,7 +123,7 @@ test("US#23 – Noter une remarque sur un chantier", async ({ page }) => {
   await openBike(page, bikeName);
   await openIntervention(page, chantier);
 
-  await page.getByRole("button", { name: "Renommer" }).click();
+  await choisirDansLeMenuChantier(page, "Renommer");
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("textbox", { name: "Note" }).fill("[TEST] Chaîne mesurée à 0,75 %.");
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
@@ -136,7 +137,7 @@ test("US#23 – Renommer un chantier en cours", async ({ page }) => {
   await openBike(page, bikeName);
   await openIntervention(page, chantier);
 
-  await page.getByRole("button", { name: "Renommer" }).click();
+  await choisirDansLeMenuChantier(page, "Renommer");
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel(/Nom de l.intervention/).fill(chantierRenomme);
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
