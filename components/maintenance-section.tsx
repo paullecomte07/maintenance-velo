@@ -176,15 +176,13 @@ export function MaintenanceSection({
   events,
   interventions,
   interventionId,
-  lastMileageKm,
 }: {
   bikeId: string;
   events: MaintenanceEvent[];
-  /** Toutes les interventions du vélo — nécessaires pour le déplacement. */
+  /** Toutes les sessions du vélo — nécessaires pour le déplacement. */
   interventions: Intervention[];
   /** La session dont on liste les actions. */
   interventionId: string;
-  lastMileageKm?: number | null;
 }) {
   const [editEvent, setEditEvent] = useState<MaintenanceEvent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MaintenanceEvent | null>(
@@ -198,11 +196,7 @@ export function MaintenanceSection({
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="text-lg">Actions réalisées</CardTitle>
-        <QuickAddEvent
-          bikeId={bikeId}
-          interventionId={interventionId}
-          lastMileageKm={lastMileageKm}
-        />
+        <QuickAddEvent bikeId={bikeId} interventionId={interventionId} />
       </CardHeader>
       <CardContent className="space-y-4">
         {events.length === 0 ? (
@@ -227,9 +221,9 @@ export function MaintenanceSection({
                       </p>
                       <p className="font-medium">{event.title}</p>
                       <p className="text-sm text-muted-foreground">
+                        {/* Plus de kilométrage par action : il appartient à
+                            la session, qui l'affiche dans son entête. */}
                         {formatDate(event.date)} · {BIKE_SYSTEMS[event.system]}
-                        {event.mileage_km !== null &&
-                          ` · ${event.mileage_km.toLocaleString("fr-FR")} km`}
                       </p>
                     </div>
                     <span className="whitespace-nowrap text-sm font-medium tabular-nums">
@@ -291,7 +285,6 @@ export function MaintenanceSection({
               action={updateEvent.bind(null, editEvent.id, bikeId)}
               event={editEvent}
               interventionId={interventionId}
-              lastMileageKm={lastMileageKm}
               onSuccess={() => setEditEvent(null)}
             />
           )}

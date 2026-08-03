@@ -32,10 +32,9 @@ import {
 //   Étant donné que je suis sur la fiche d'une intervention
 //   Quand j'utilise le retour arrière
 //   Alors je reviens sur la fiche du vélo
-// Scénario: Le kilométrage apparaît sur chaque pièce [US#25]
-//   Étant donné qu'une pièce a été enregistrée avec un kilométrage de 4795
-//   Quand je consulte la fiche de l'intervention qui la contient
-//   Alors la pièce affiche le kilométrage 4795
+// Scénario retiré par US#44 : « Le kilométrage apparaît sur chaque pièce ». Le
+// relevé appartient à la session, qui l'affiche une fois dans son entête ; les
+// lignes d'action n'en portent plus. Couvert par `session-kilometrage.spec.ts`.
 // Scénario: La liste des pièces à plat n'est plus proposée [US#25]
 //   Étant donné que je suis sur la fiche d'un vélo
 //   Quand j'examine la page
@@ -119,13 +118,6 @@ test("US#25 – Ouvrir la fiche d'un chantier en cours depuis la liste", async (
   await expect(page.getByRole("heading", { name: enCours })).toBeVisible();
   await expect(page.getByText("Actions réalisées")).toBeVisible();
   await expect(page.getByText(piece).first()).toBeVisible();
-});
-
-test("US#25 – Le kilométrage apparaît sur chaque pièce", async ({ page }) => {
-  await openBike(page, bikeName);
-  await ouvrirFicheSession(page, enCours);
-
-  await expect(page.getByText(/4\s?795 km/)).toBeVisible();
 });
 
 test("US#25 – Revenir à la fiche du vélo depuis une intervention", async ({

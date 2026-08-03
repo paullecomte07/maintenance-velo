@@ -5,6 +5,7 @@ import {
   closeIntervention,
   deleteIntervention,
   startIntervention,
+  updateSessionMileage,
 } from "../actions";
 import { CauseBadge } from "@/components/cause-badge";
 import { InterventionHeaderActions } from "@/components/intervention-header-actions";
@@ -115,6 +116,11 @@ export default async function InterventionPage({
     intervention.id,
     bike.id
   );
+  const setMileageAction = updateSessionMileage.bind(
+    null,
+    intervention.id,
+    bike.id
+  );
 
   return (
     <div className="space-y-6">
@@ -148,6 +154,7 @@ export default async function InterventionPage({
         onStart={startAction}
         onClose={closeAction}
         onDelete={deleteAction}
+        onSetMileage={setMileageAction}
       />
 
       {intervention.note && (
@@ -166,7 +173,6 @@ export default async function InterventionPage({
         events={pieces}
         interventions={siblings ?? [intervention]}
         interventionId={intervention.id}
-        lastMileageKm={bike.mileage_km}
       />
     </div>
   );
