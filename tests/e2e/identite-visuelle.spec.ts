@@ -146,7 +146,11 @@ test("US#28 – L'action principale se distingue des actions secondaires", async
   // L'accent du projet : #1c5cab.
   expect(await fond("Ajouter une action")).toBe("rgb(28, 92, 171)");
   // Les gestes secondaires restent neutres, pour ne pas diluer l'attention.
-  expect(await fond("Renommer")).not.toBe("rgb(28, 92, 171)");
+  // Depuis US#46, « Renommer » et « Supprimer » ne sont plus des boutons : le
+  // geste secondaire visible de cet écran est le menu des réglages.
+  expect(await fond("Réglages de l'intervention")).not.toBe(
+    "rgb(28, 92, 171)"
+  );
 });
 
 test("US#28 – Les états constatés sont visuellement distincts", async ({
