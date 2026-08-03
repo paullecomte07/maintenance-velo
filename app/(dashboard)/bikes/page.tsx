@@ -12,7 +12,11 @@ import { createClient } from "@/lib/supabase/server";
 import { BIKE_CATEGORIES } from "@/lib/reference-data";
 import type { Bike } from "@/lib/types";
 
-export default async function BikesPage() {
+export default async function BikesPage({
+  searchParams,
+}: {
+  searchParams: { message?: string };
+}) {
   const supabase = createClient();
   const { data: bikes } = await supabase
     .from("bikes")
@@ -22,6 +26,12 @@ export default async function BikesPage() {
 
   return (
     <div className="space-y-6">
+      {searchParams.message === "mot-de-passe-modifie" && (
+        <p className="rounded-md bg-muted p-3 text-sm">
+          Ton mot de passe a été modifié.
+        </p>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Mes vélos</h1>
         <Button asChild>

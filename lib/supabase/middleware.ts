@@ -29,20 +29,44 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-  const isAuthPage =
-    pathname === "/" || pathname === "/login" || pathname === "/signup";
-
-  if (!user && !isAuthPage) {
+  // getUser() a pu consommer le refresh token et en poser un neuf sur
+  // supabaseResponse. Une redirection construite à part perdrait ces cookies,
+  // et la session mourrait au passage : on les reporte systématiquement.
+  const redirectTo = (pathname: string) => {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    url.pathname = pathname;
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies
+      .getAll()
+      .forEach((cookie) => response.cookies.set(cookie));
+    return response;
+  };
+
+  const { pathname } = request.nextUrl;
+
+  // Atteignables sans session.
+  const isPublicPage =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/auth/callback";
+
+  // Celles qui n'ont plus de sens une fois connecté. /reset-password en est
+  // volontairement absent : le lien de récupération ouvre une session, et
+  // c'est justement connecté qu'on y choisit son nouveau mot de passe.
+  const isSignedOutOnlyPage =
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password";
+
+  if (!user && !isPublicPage) {
+    return redirectTo("/login");
   }
 
-  if (user && (pathname === "/login" || pathname === "/signup")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/bikes";
-    return NextResponse.redirect(url);
+  if (user && isSignedOutOnlyPage) {
+    return redirectTo("/bikes");
   }
 
   return supabaseResponse;
