@@ -65,7 +65,6 @@ export function MaintenanceEventForm({
   action,
   event,
   interventionId,
-  lastMileageKm,
   onSuccess,
 }: {
   action: (
@@ -75,8 +74,6 @@ export function MaintenanceEventForm({
   event?: MaintenanceEvent;
   /** Session à laquelle l'action est rattachée. */
   interventionId: string;
-  /** Dernier kilométrage connu, proposé par défaut. */
-  lastMileageKm?: number | null;
   onSuccess: () => void;
 }) {
   const [state, formAction] = useFormState<EventFormState, FormData>(action, {
@@ -252,7 +249,10 @@ export function MaintenanceEventForm({
       />
       <input type="hidden" name="etat_constate" value={etatConstate ?? ""} />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Plus de kilométrage ici : entre « Sur quelle pièce ? » et « Dans quel
+          état tu l'as trouvée ? », plus rien ne disait s'il parlait du vélo ou
+          de la pièce. Il se relève une fois, sur la session. */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="date">Date *</Label>
           <Input
@@ -273,18 +273,6 @@ export function MaintenanceEventForm({
             step="0.01"
             defaultValue={event?.cost ?? ""}
             placeholder="Facultatif"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="mileage_km">Kilométrage</Label>
-          <Input
-            id="mileage_km"
-            name="mileage_km"
-            type="number"
-            min="0"
-            step="1"
-            defaultValue={event?.mileage_km ?? lastMileageKm ?? ""}
-            placeholder="km au compteur"
           />
         </div>
       </div>

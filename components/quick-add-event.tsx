@@ -20,13 +20,11 @@ import {
 export function QuickAddEvent({
   bikeId,
   interventionId,
-  lastMileageKm,
   label = "Ajouter une action",
   variant = "default",
 }: {
   bikeId: string;
   interventionId: string;
-  lastMileageKm?: number | null;
   label?: string;
   variant?: "default" | "outline";
 }) {
@@ -45,7 +43,6 @@ export function QuickAddEvent({
           <MaintenanceEventForm
             action={createEvent.bind(null, bikeId)}
             interventionId={interventionId}
-            lastMileageKm={lastMileageKm}
             onSuccess={() => setOpen(false)}
           />
         </DialogContent>

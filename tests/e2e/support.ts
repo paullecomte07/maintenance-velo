@@ -194,6 +194,21 @@ export async function ouvrirSession(
   await addPiece(page, piece);
 }
 
+/**
+ * Clôture la session ouverte, depuis sa fiche, et attend que la page ait
+ * réellement basculé.
+ *
+ * Ne pas se contenter de la disparition du bouton : pendant l'enregistrement
+ * son libellé devient « … », donc il « disparaît » avant même que l'appel
+ * serveur soit terminé. C'est le badge d'état qui fait foi.
+ */
+export async function cloturerSession(page: Page) {
+  await page.getByRole("button", { name: "Clôturer" }).click();
+  await expect(page.getByText("Terminée").first()).toBeVisible({
+    timeout: 15000,
+  });
+}
+
 /** Le groupe « En cours », « À venir » ou « Terminées » de la fiche vélo. */
 export function group(page: Page, label: string) {
   return page.getByRole("region", { name: label });

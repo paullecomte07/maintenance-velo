@@ -126,12 +126,51 @@ export async function updateIntervention(
 }
 
 /**
+ * Le dernier relevé connu du vélo ne fait que monter. Un relevé plus bas est
+ * accepté sur la session — compteur changé, remis à zéro — mais n'efface pas
+ * les kilomètres déjà parcourus.
+ */
+async function releverKilometrage(
+  supabase: ReturnType<typeof createClient>,
+  bikeId: string,
+  mileageKm: number | null
+) {
+  if (mileageKm === null) return;
+
+  const { data: bike } = await supabase
+    .from("bikes")
+    .select("mileage_km")
+    .eq("id", bikeId)
+    .maybeSingle<{ mileage_km: number | null }>();
+
+  if (bike && bike.mileage_km !== null && bike.mileage_km >= mileageKm) return;
+
+  await supabase.from("bikes").update({ mileage_km: mileageKm }).eq("id", bikeId);
+}
+
+/**
+ * Le relevé saisi, ou `null` s'il n'a pas été renseigné.
+ *
+ * Le test explicite sur `null` n'est pas de la précaution inutile : `Number(null)`
+ * vaut `0`, et un relevé absent finissait enregistré comme « 0 km au compteur ».
+ */
+function parseKilometrage(valeur: number | null | undefined): number | null {
+  if (valeur === null || valeur === undefined) return null;
+  const km = Number(valeur);
+  return Number.isFinite(km) && km >= 0 ? Math.round(km) : null;
+}
+
+/**
  * Démarre une session prévue. Refusé si une autre session est déjà ouverte sur
  * ce vélo : le rattachement automatique deviendrait ambigu.
+ *
+ * C'est le moment où l'on est à côté du vélo, compteur sous les yeux : le
+ * relevé se demande ici, une fois, plutôt qu'à chaque action.
  */
 export async function startIntervention(
   interventionId: string,
-  bikeId: string
+  bikeId: string,
+  mileageKm: number | null
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
 
@@ -142,14 +181,51 @@ export async function startIntervention(
     };
   }
 
+  const km = parseKilometrage(mileageKm);
+
   const { error } = await supabase
     .from("interventions")
-    .update({ started_at: today(), closed_at: null })
+    .update({
+      started_at: today(),
+      closed_at: null,
+      // Le relevé ne s'efface jamais tout seul : démarrer sans compteur sous
+      // les yeux ne doit pas perdre celui qu'on avait déjà noté.
+      ...(km !== null ? { mileage_km: km } : {}),
+    })
     .eq("id", interventionId);
 
   if (error) {
     return { error: "Le démarrage de la session a échoué. Réessaie." };
   }
+
+  await releverKilometrage(supabase, bikeId, km);
+
+  revalidateBike(bikeId);
+  return { error: null };
+}
+
+/**
+ * Corrige le relevé d'une session, dans n'importe lequel de ses trois états.
+ * Une session démarrée sans compteur sous les yeux se complète par ici.
+ */
+export async function updateSessionMileage(
+  interventionId: string,
+  bikeId: string,
+  mileageKm: number | null
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const km = parseKilometrage(mileageKm);
+
+  const { error } = await supabase
+    .from("interventions")
+    .update({ mileage_km: km })
+    .eq("id", interventionId);
+
+  if (error) {
+    return { error: "L'enregistrement du kilométrage a échoué. Réessaie." };
+  }
+
+  await releverKilometrage(supabase, bikeId, km);
 
   revalidateBike(bikeId);
   return { error: null };
