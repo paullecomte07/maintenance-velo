@@ -49,6 +49,13 @@ export type Intervention = {
    * tout l'historique importé : la migration n'invente aucune cause.
    */
   cause: InterventionCause | null;
+  /**
+   * Kilométrage du vélo au compteur, relevé une fois pour toute la session.
+   * Il vivait sur l'action, où plus rien ne disait s'il parlait du vélo ou de
+   * la pièce — tout le reste du formulaire parlant de la pièce. Facultatif :
+   * on ne bloque pas quelqu'un qui n'a pas son compteur sous les yeux.
+   */
+  mileage_km: number | null;
   note: string | null;
   created_at: string;
 };
@@ -127,7 +134,10 @@ export type MaintenanceEvent = {
    */
   etat_constate: EtatConstate | null;
   cost: number | null;
-  /** Kilométrage du vélo relevé au moment de l'action. */
+  /**
+   * @deprecated Le relevé est passé sur la session. La colonne reste le temps
+   * que l'ancien code cesse de tourner, elle n'est plus ni lue ni écrite.
+   */
   mileage_km: number | null;
   created_at: string;
 };

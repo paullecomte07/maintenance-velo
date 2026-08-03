@@ -188,8 +188,10 @@ test("US#30 – Enregistrer une inspection qui ne change rien", async ({
     .filter({ hasText: "[TEST] Plaquettes" });
   await expect(ligne).toContainText("Inspection");
   await expect(ligne).toContainText("Neuf");
-  await expect(ligne).toContainText("4 795 km");
   await expect(ligne).toContainText("—");
+  // Le kilométrage a quitté la ligne d'action pour la session (US#44) : c'est
+  // son entête qui le porte, une fois pour toutes les pièces.
+  await expect(ligne).not.toContainText("km");
 });
 
 test("US#30 – L'état constaté apparaît sur chaque ligne", async ({ page }) => {

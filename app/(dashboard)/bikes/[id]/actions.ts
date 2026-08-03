@@ -25,7 +25,6 @@ export type AnalysisState = {
 
 function eventPayload(formData: FormData) {
   const cost = (formData.get("cost") as string)?.trim();
-  const mileage = (formData.get("mileage_km") as string)?.trim();
   const etat = (formData.get("etat_constate") as string)?.trim();
   return {
     date: formData.get("date") as string,
@@ -37,7 +36,6 @@ function eventPayload(formData: FormData) {
     // seulement *prévue* n'en aura pas non plus (#26).
     etat_constate: etat && etat in ETATS_CONSTATES ? etat : null,
     cost: cost ? Number(cost) : null,
-    mileage_km: mileage ? Number(mileage) : null,
   };
 }
 

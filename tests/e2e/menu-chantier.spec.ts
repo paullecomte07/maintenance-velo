@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   addPiece,
   choisirDansLeMenuSession,
+  cloturerSession,
   createBike,
   deleteBike,
   openBike,
@@ -132,10 +133,7 @@ test("US#46 – Un chantier terminé n'a plus d'action principale", async ({
   await openBike(page, bikeName);
   await ouvrirFicheSession(page, chantier);
 
-  await page.getByRole("button", { name: "Clôturer" }).click();
-  await expect(page.getByRole("button", { name: "Clôturer" })).toBeHidden({
-    timeout: 15000,
-  });
+  await cloturerSession(page);
 
   await expect(
     page.getByRole("button", { name: "Démarrer cette session" })

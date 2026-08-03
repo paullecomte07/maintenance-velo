@@ -32,11 +32,10 @@ import {
 //   Étant donné que je suis sur le formulaire de saisie
 //   Quand je recherche "Plaquettes"
 //   Alors les propositions distinguent "Système de freinage avant" et "Système de freinage arrière"
-// Scénario: Le kilométrage est pré-rempli avec le dernier relevé [US#24]
-//   Étant donné que le dernier kilométrage connu de mon vélo est 4795
-//   Quand j'ouvre le formulaire de saisie
-//   Alors le champ kilométrage affiche 4795
-//   Et je peux le corriger avant d'enregistrer
+// Scénario retiré par US#44 : « Le kilométrage est pré-rempli avec le dernier
+// relevé ». Le champ a quitté le formulaire de saisie — on ne savait plus s'il
+// parlait du vélo ou de la pièce. Le relevé se prend désormais une fois par
+// session, et c'est `session-kilometrage.spec.ts` qui le couvre.
 // Scénario: Enregistrer une pièce sans en connaître le coût [US#24]
 //   Étant donné que je suis sur le formulaire de saisie
 //   Quand je renseigne l'action, la pièce et l'état mais laisse le coût vide
@@ -52,22 +51,11 @@ const autreChantier = "[TEST] Chantier de destination";
 
 test("US#4 – Créer un vélo de test (saisie)", async ({ page }) => {
   await createBike(page, bikeName, { mileageKm: 4795 });
-});
 
-test("US#24 – Le kilométrage est pré-rempli avec le dernier relevé", async ({
-  page,
-}) => {
+  // La session que les scénarios suivants remplissent. Elle était créée par le
+  // scénario de pré-remplissage du kilométrage, retiré par US#44.
   await openBike(page, bikeName);
   await planifierSession(page, chantier);
-  await ouvrirFicheSession(page, chantier);
-  await page.getByRole("button", { name: "Ajouter une action" }).click();
-
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByLabel("Kilométrage")).toHaveValue("4795");
-
-  // Corrigeable avant enregistrement.
-  await dialog.getByLabel("Kilométrage").fill("4820");
-  await expect(dialog.getByLabel("Kilométrage")).toHaveValue("4820");
 });
 
 test("US#24 – Le système se déduit de la pièce choisie", async ({ page }) => {
