@@ -89,16 +89,16 @@ export async function pickChip(
     .click();
 }
 
-/** Crée une intervention planifiée depuis la fiche vélo. */
-export async function planifierIntervention(
+/** Crée une session d'atelier planifiée depuis la fiche vélo. */
+export async function planifierSession(
   page: Page,
   titre: string,
   { cause = "Prévention" }: { cause?: string } = {}
 ) {
-  await page.getByRole("button", { name: "Planifier une intervention" }).click();
+  await page.getByRole("button", { name: "Planifier une session" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Nom de l.intervention/).fill(titre);
-  await pickChip(dialog, "Pourquoi ce chantier ?", cause);
+  await dialog.getByLabel(/Nom de la session/).fill(titre);
+  await pickChip(dialog, "Pourquoi tu passes à l'atelier ?", cause);
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 }
@@ -151,7 +151,7 @@ export async function fillPiece(page: Page, piece: PieceInput) {
 }
 
 /**
- * Ouvre le formulaire depuis la fiche d'un chantier — le seul endroit d'où
+ * Ouvre le formulaire depuis la fiche d'une session — le seul endroit d'où
  * l'on saisit désormais : la fiche vélo ne propose plus d'ajouter une action.
  */
 export async function addPiece(page: Page, piece: PieceInput) {
@@ -160,37 +160,37 @@ export async function addPiece(page: Page, piece: PieceInput) {
 }
 
 /**
- * Ouvre le menu ⋯ de la fiche d'un chantier et y choisit une entrée. Renommer
+ * Ouvre le menu ⋯ de la fiche d'une session et y choisit une entrée. Renommer
  * et supprimer n'y sont plus des boutons de premier niveau : seul le geste du
  * jour en est un.
  */
-export async function choisirDansLeMenuChantier(
+export async function choisirDansLeMenuSession(
   page: Page,
   entree: string | RegExp
 ) {
-  await page.getByRole("button", { name: "Réglages de l'intervention" }).click();
+  await page.getByRole("button", { name: "Réglages de la session" }).click();
   await page.getByRole("menuitem", { name: entree }).click();
 }
 
-/** Ouvre la fiche d'une intervention depuis la liste de la fiche vélo. */
-export async function openIntervention(page: Page, title: string) {
+/** Ouvre la fiche d'une session depuis la liste de la fiche vélo. */
+export async function ouvrirFicheSession(page: Page, title: string) {
   await page.getByRole("link").filter({ hasText: title }).first().click();
   await expect(page).toHaveURL(/\/interventions\/[0-9a-f-]+$/);
 }
 
 /**
- * Parcours complet d'un chantier : le planifier depuis la fiche vélo, l'ouvrir,
- * puis y saisir une première action — ce qui le fait passer « en cours ».
- * C'est devenu le seul chemin pour démarrer un chantier.
+ * Parcours complet d'une session : la planifier depuis la fiche vélo, l'ouvrir,
+ * puis y saisir une première action — ce qui la fait passer « en cours ».
+ * C'est devenu le seul chemin pour démarrer une session.
  */
-export async function ouvrirChantier(
+export async function ouvrirSession(
   page: Page,
   titre: string,
   piece: PieceInput,
   { cause = "Prévention" }: { cause?: string } = {}
 ) {
-  await planifierIntervention(page, titre, { cause });
-  await openIntervention(page, titre);
+  await planifierSession(page, titre, { cause });
+  await ouvrirFicheSession(page, titre);
   await addPiece(page, piece);
 }
 

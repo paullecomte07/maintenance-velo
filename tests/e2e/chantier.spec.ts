@@ -2,15 +2,15 @@ import { expect, test } from "@playwright/test";
 
 import {
   addPiece,
-  choisirDansLeMenuChantier,
+  choisirDansLeMenuSession,
   createBike,
   deleteBike,
   group,
   isoDaysAgo,
   openBike,
-  openIntervention,
-  ouvrirChantier,
-  planifierIntervention,
+  ouvrirFicheSession,
+  ouvrirSession,
+  planifierSession,
   testBikeName,
 } from "./support";
 
@@ -72,7 +72,7 @@ test("US#23 – Rattacher une pièce à un chantier ouvert trois jours plus tôt
   await openBike(page, bikeName);
 
   // Le chantier est ouvert par sa première action, datée d'il y a trois jours.
-  await ouvrirChantier(page, chantier, {
+  await ouvrirSession(page, chantier, {
     titre: piece1,
     systeme: "Transmission",
     cout: "30",
@@ -106,7 +106,7 @@ test("US#23 – Un seul chantier ouvert par vélo", async ({ page }) => {
   // La seule création proposée est une intervention *à venir* : il n'existe
   // aucun moyen d'ouvrir un second chantier tant que celui-ci est en cours.
   await expect(
-    page.getByRole("button", { name: "Planifier une intervention" })
+    page.getByRole("button", { name: "Planifier une session" })
   ).toBeVisible();
 });
 
@@ -121,9 +121,9 @@ test("US#23 – Aucune clôture automatique", async ({ page }) => {
 
 test("US#23 – Noter une remarque sur un chantier", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
-  await choisirDansLeMenuChantier(page, "Renommer");
+  await choisirDansLeMenuSession(page, "Renommer");
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("textbox", { name: "Note" }).fill("[TEST] Chaîne mesurée à 0,75 %.");
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
@@ -135,11 +135,11 @@ test("US#23 – Noter une remarque sur un chantier", async ({ page }) => {
 
 test("US#23 – Renommer un chantier en cours", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
-  await choisirDansLeMenuChantier(page, "Renommer");
+  await choisirDansLeMenuSession(page, "Renommer");
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Nom de l.intervention/).fill(chantierRenomme);
+  await dialog.getByLabel(/Nom de la session/).fill(chantierRenomme);
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
@@ -161,9 +161,9 @@ test("US#23 – Déplacer une pièce vers une autre intervention", async ({
   await openBike(page, bikeName);
 
   // Une seconde intervention, planifiée, sert de destination.
-  await planifierIntervention(page, autreChantier);
+  await planifierSession(page, autreChantier);
 
-  await openIntervention(page, chantierRenomme);
+  await ouvrirFicheSession(page, chantierRenomme);
   await page
     .getByTestId("action")
     .filter({ hasText: piece2 })
@@ -172,7 +172,7 @@ test("US#23 – Déplacer une pièce vers une autre intervention", async ({
 
   const dialog = page.getByRole("dialog");
   await dialog
-    .getByRole("combobox", { name: "Intervention de destination" })
+    .getByRole("combobox", { name: "Session de destination" })
     .click();
   await page.getByRole("option", { name: autreChantier }).click();
   await dialog.getByRole("button", { name: "Déplacer" }).click();
@@ -183,7 +183,7 @@ test("US#23 – Déplacer une pièce vers une autre intervention", async ({
   await expect(page.getByText(/Coût total/)).toContainText(/30,00/);
 
   await openBike(page, bikeName);
-  await openIntervention(page, autreChantier);
+  await ouvrirFicheSession(page, autreChantier);
   await expect(page.getByText(piece2)).toBeVisible();
   await expect(page.getByText(/Coût total/)).toContainText(/20,00/);
 });
@@ -192,7 +192,7 @@ test("US#23 – Clôturer un chantier fige son coût et sa plage de dates", asyn
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantierRenomme);
+  await ouvrirFicheSession(page, chantierRenomme);
 
   await page.getByRole("button", { name: "Clôturer" }).click();
   await expect(page.getByRole("button", { name: "Clôturer" })).toBeHidden({

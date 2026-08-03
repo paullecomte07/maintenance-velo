@@ -2,12 +2,12 @@ import { expect, test } from "@playwright/test";
 
 import {
   addPiece,
-  choisirDansLeMenuChantier,
+  choisirDansLeMenuSession,
   createBike,
   deleteBike,
   openBike,
-  openIntervention,
-  ouvrirChantier,
+  ouvrirFicheSession,
+  ouvrirSession,
   testBikeName,
 } from "./support";
 
@@ -28,7 +28,7 @@ import {
 // Scénario: Un chantier terminé n'a plus d'action principale [US#46]
 //   Étant donné un chantier terminé sur mon vélo
 //   Quand je consulte sa fiche
-//   Alors aucun bouton "Démarrer ce chantier" ni "Clôturer" n'est proposé
+//   Alors aucun bouton "Démarrer cette session" ni "Clôturer" n'est proposé
 //   Et le menu des réglages du chantier reste accessible
 // Scénario: Le menu est utilisable au clavier [US#46]
 //   Étant donné un chantier en cours sur mon vélo
@@ -42,7 +42,7 @@ test.describe.configure({ mode: "serial" });
 const bikeName = testBikeName("Menu");
 const chantier = "[TEST] Révision de printemps";
 
-const reglages = "Réglages de l'intervention";
+const reglages = "Réglages de la session";
 
 test("US#4 – Créer un vélo de test (menu)", async ({ page }) => {
   await createBike(page, bikeName);
@@ -51,7 +51,7 @@ test("US#4 – Créer un vélo de test (menu)", async ({ page }) => {
 test("US#46 – L'action du moment reste au premier plan", async ({ page }) => {
   test.setTimeout(90_000);
   await openBike(page, bikeName);
-  await ouvrirChantier(page, chantier, {
+  await ouvrirSession(page, chantier, {
     titre: "[TEST] Chaîne",
     systeme: "Transmission",
     cout: "30",
@@ -63,20 +63,20 @@ test("US#46 – L'action du moment reste au premier plan", async ({ page }) => {
   // On vise l'entête : chaque ligne d'action porte, elle, son propre bouton.
   await expect(page.getByRole("button", { name: "Renommer" })).toBeHidden();
   await expect(
-    page.getByRole("button", { name: "Supprimer l'intervention" })
+    page.getByRole("button", { name: "Supprimer la session" })
   ).toBeHidden();
   await expect(page.getByRole("button", { name: reglages })).toBeVisible();
 });
 
 test("US#46 – Renommer depuis le menu", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
-  await choisirDansLeMenuChantier(page, "Renommer");
+  await choisirDansLeMenuSession(page, "Renommer");
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel(/Nom de l.intervention/)).toHaveValue(
+  await expect(dialog.getByLabel(/Nom de la session/)).toHaveValue(
     chantier
   );
 });
@@ -85,7 +85,7 @@ test("US#46 – Supprimer reste protégé par sa confirmation", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   // Une seconde action, pour que la confirmation ait deux à annoncer.
   await addPiece(page, {
@@ -95,7 +95,7 @@ test("US#46 – Supprimer reste protégé par sa confirmation", async ({
     cout: "52",
   });
 
-  await choisirDansLeMenuChantier(page, "Supprimer l'intervention");
+  await choisirDansLeMenuSession(page, "Supprimer la session");
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("2 actions");
@@ -107,7 +107,7 @@ test("US#46 – Supprimer reste protégé par sa confirmation", async ({
 
 test("US#46 – Le menu est utilisable au clavier", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   const trigger = page.getByRole("button", { name: reglages });
   await trigger.focus();
@@ -119,7 +119,7 @@ test("US#46 – Le menu est utilisable au clavier", async ({ page }) => {
 
   await page.keyboard.press("ArrowDown");
   await expect(
-    page.getByRole("menuitem", { name: "Supprimer l'intervention" })
+    page.getByRole("menuitem", { name: "Supprimer la session" })
   ).toBeFocused();
 
   await page.keyboard.press("Escape");
@@ -130,7 +130,7 @@ test("US#46 – Un chantier terminé n'a plus d'action principale", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   await page.getByRole("button", { name: "Clôturer" }).click();
   await expect(page.getByRole("button", { name: "Clôturer" })).toBeHidden({
@@ -138,11 +138,11 @@ test("US#46 – Un chantier terminé n'a plus d'action principale", async ({
   });
 
   await expect(
-    page.getByRole("button", { name: "Démarrer ce chantier" })
+    page.getByRole("button", { name: "Démarrer cette session" })
   ).toBeHidden();
   // Le menu, lui, reste : on doit pouvoir corriger un chantier clôturé.
   await expect(page.getByRole("button", { name: reglages })).toBeVisible();
-  await choisirDansLeMenuChantier(page, "Renommer");
+  await choisirDansLeMenuSession(page, "Renommer");
   await expect(page.getByRole("dialog")).toBeVisible();
 });
 

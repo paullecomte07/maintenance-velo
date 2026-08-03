@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  ouvrirChantier,
+  ouvrirSession,
   addPiece,
   createBike,
   deleteBike,
   openBike,
-  openIntervention,
+  ouvrirFicheSession,
   testBikeName,
 } from "./support";
 
@@ -50,7 +50,7 @@ test("US#4 – Créer un vélo de test", async ({ page }) => {
 test("US#5 – Ajouter un changement de pièce", async ({ page }) => {
   await openBike(page, bikeName);
 
-  await ouvrirChantier(page, chantier, {
+  await ouvrirSession(page, chantier, {
     titre: eventTitle,
     systeme: "Système de freinage avant",
     cout: "25",
@@ -61,7 +61,7 @@ test("US#5 – Ajouter un changement de pièce", async ({ page }) => {
 
 test("US#5 – Modifier le changement", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   await page
     .getByTestId("action")
@@ -80,7 +80,7 @@ test("US#5 – Modifier le changement", async ({ page }) => {
 
 test("US#5 – Supprimer le changement", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   await page
     .getByTestId("action")
@@ -93,7 +93,7 @@ test("US#5 – Supprimer le changement", async ({ page }) => {
     .click();
 
   await expect(
-    page.getByText("Aucune action enregistrée dans ce chantier.")
+    page.getByText("Aucune action enregistrée dans cette session.")
   ).toBeVisible({ timeout: 15000 });
 });
 

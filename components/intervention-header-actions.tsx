@@ -23,12 +23,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Intervention, InterventionStatus } from "@/lib/types";
+import {
+  nomDeSession,
+  type Intervention,
+  type InterventionStatus,
+} from "@/lib/types";
 
 /**
- * Actions du chantier : démarrer, clôturer, renommer, supprimer. La clôture
- * est toujours explicite — rien ne se ferme tout seul, un chantier peut dormir
- * des semaines sans être fini.
+ * Actions de la session : démarrer, clôturer, nommer, supprimer. La clôture est
+ * toujours explicite — rien ne se ferme tout seul, une session peut dormir des
+ * semaines sans être finie.
  *
  * Seul le geste du jour est un bouton. Renommer et supprimer se font une fois
  * par an, voire jamais : au même poids visuel, « Supprimer » captait autant
@@ -75,9 +79,9 @@ export function InterventionHeaderActions({
             <Button
               size="sm"
               disabled={isPending}
-              onClick={() => run(onStart, "Chantier démarré.")}
+              onClick={() => run(onStart, "Session démarrée.")}
             >
-              {isPending ? "…" : "Démarrer ce chantier"}
+              {isPending ? "…" : "Démarrer cette session"}
             </Button>
           )}
           {status === "en_cours" && (
@@ -85,7 +89,7 @@ export function InterventionHeaderActions({
               size="sm"
               variant="outline"
               disabled={isPending}
-              onClick={() => run(onClose, "Chantier clôturé.")}
+              onClick={() => run(onClose, "Session clôturée.")}
             >
               {isPending ? "…" : "Clôturer"}
             </Button>
@@ -98,7 +102,7 @@ export function InterventionHeaderActions({
             <Button
               variant="outline"
               className="ml-auto h-11 w-11 shrink-0 p-0"
-              aria-label="Réglages de l'intervention"
+              aria-label="Réglages de la session"
             >
               <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
             </Button>
@@ -123,7 +127,7 @@ export function InterventionHeaderActions({
               onSelect={() => setDeleteOpen(true)}
             >
               <Trash2 aria-hidden="true" />
-              Supprimer l&apos;intervention
+              Supprimer la session
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -132,7 +136,7 @@ export function InterventionHeaderActions({
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Modifier l&apos;intervention</DialogTitle>
+            <DialogTitle>Modifier la session</DialogTitle>
           </DialogHeader>
           <InterventionForm
             action={updateIntervention.bind(null, intervention.id, bikeId)}
@@ -146,13 +150,13 @@ export function InterventionHeaderActions({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Supprimer « {intervention.title} » ?
+              Supprimer « {nomDeSession(intervention)} » ?
             </DialogTitle>
             {/* Chiffrer ce qu'on perd : un « Êtes-vous sûr ? » qui ne dit pas
                 combien d'actions partent avec ne protège de rien. */}
             <DialogDescription>
               {actionCount === 0
-                ? "Cette intervention ne contient aucune action. La suppression est définitive."
+                ? "Cette session ne contient aucune action. La suppression est définitive."
                 : `Ses ${actionCount} action${actionCount > 1 ? "s" : ""} seront supprimées avec elle, définitivement.`}
             </DialogDescription>
           </DialogHeader>
@@ -174,7 +178,7 @@ export function InterventionHeaderActions({
                     toast.error(error);
                     return;
                   }
-                  toast.success("Intervention supprimée.");
+                  toast.success("Session supprimée.");
                   setDeleteOpen(false);
                   router.push(`/bikes/${bikeId}`);
                 })

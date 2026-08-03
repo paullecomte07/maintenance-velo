@@ -1,14 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import {
-  ouvrirChantier,
+  ouvrirSession,
   addPiece,
   createBike,
   deleteBike,
   group,
   openBike,
-  openIntervention,
-  planifierIntervention,
+  ouvrirFicheSession,
+  planifierSession,
   testBikeName,
 } from "./support";
 
@@ -55,7 +55,7 @@ const piece = "[TEST] Chaîne";
 /** Ouvre un chantier avec une pièce, puis le clôture. */
 async function chantierTermine(page: Page, titre: string) {
   await openBike(page, bikeName);
-  await ouvrirChantier(page, titre, {
+  await ouvrirSession(page, titre, {
     titre: `${piece} ${titre}`,
     systeme: "Transmission",
     cout: "10",
@@ -83,11 +83,11 @@ test("US#25 – Les trois groupes d'interventions sont visibles ensemble", async
 
   // …une à venir…
   await openBike(page, bikeName);
-  await planifierIntervention(page, aVenir);
+  await planifierSession(page, aVenir);
 
   // …et une en cours : la première action la fait passer de « à venir »
   // à « en cours ».
-  await ouvrirChantier(page, enCours, {
+  await ouvrirSession(page, enCours, {
     titre: piece,
     systeme: "Transmission",
     cout: "30",
@@ -114,7 +114,7 @@ test("US#25 – Ouvrir la fiche d'un chantier en cours depuis la liste", async (
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, enCours);
+  await ouvrirFicheSession(page, enCours);
 
   await expect(page.getByRole("heading", { name: enCours })).toBeVisible();
   await expect(page.getByText("Actions réalisées")).toBeVisible();
@@ -123,7 +123,7 @@ test("US#25 – Ouvrir la fiche d'un chantier en cours depuis la liste", async (
 
 test("US#25 – Le kilométrage apparaît sur chaque pièce", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, enCours);
+  await ouvrirFicheSession(page, enCours);
 
   await expect(page.getByText(/4\s?795 km/)).toBeVisible();
 });
@@ -132,7 +132,7 @@ test("US#25 – Revenir à la fiche du vélo depuis une intervention", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, enCours);
+  await ouvrirFicheSession(page, enCours);
 
   await page.getByRole("link", { name: `← ${bikeName}` }).click();
   await expect(page).toHaveURL(/\/bikes\/[0-9a-f-]+$/);
@@ -149,7 +149,7 @@ test("US#25 – La liste des pièces à plat n'est plus proposée", async ({
   await expect(page.getByText("Actions réalisées")).toBeHidden();
 
   // …les pièces ne sont accessibles qu'en ouvrant une intervention.
-  await openIntervention(page, enCours);
+  await ouvrirFicheSession(page, enCours);
   await expect(page.getByText("Actions réalisées")).toBeVisible();
 });
 

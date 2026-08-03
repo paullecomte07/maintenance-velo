@@ -21,6 +21,7 @@ import {
   INTERVENTION_STATUS_LABELS,
   interventionStatus,
   isEnRetard,
+  nomDeSession,
   type Bike,
   type Intervention,
   type MaintenanceEvent,
@@ -69,8 +70,8 @@ export default async function InterventionPage({
     .order("created_at", { ascending: false })
     .returns<MaintenanceEvent[]>();
 
-  // Toutes les interventions du vélo : nécessaires pour proposer une
-  // destination lorsqu'on déplace une action.
+  // Toutes les sessions du vélo : nécessaires pour proposer une destination
+  // lorsqu'on déplace une action.
   const { data: siblings } = await supabase
     .from("interventions")
     .select("*")
@@ -125,7 +126,7 @@ export default async function InterventionPage({
           ← {bike.name}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold">{intervention.title}</h1>
+          <h1 className="text-2xl font-bold">{nomDeSession(intervention)}</h1>
           <Badge variant={status === "en_cours" ? "info" : "outline"}>
             {INTERVENTION_STATUS_LABELS[status]}
           </Badge>

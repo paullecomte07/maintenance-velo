@@ -11,6 +11,7 @@ import {
   NATURE_CHANGEMENT_TYPES,
 } from "@/lib/reference-data";
 import { createClient } from "@/lib/supabase/server";
+import { nomDeSession, type Intervention } from "@/lib/types";
 import type { Bike, MaintenanceEvent } from "@/lib/types";
 
 export type EventFormState = { error: string | null; success: boolean };
@@ -41,13 +42,13 @@ function eventPayload(formData: FormData) {
 }
 
 /**
- * L'intervention est toujours connue : on n'entre dans la saisie que depuis sa
+ * La session est toujours connue : on n'entre dans la saisie que depuis sa
  * fiche. Consigner du travail fait la fait donc **démarrer** si elle était
- * seulement prévue — une intervention ne peut pas rester « à venir » alors
- * qu'elle porte des actions réalisées.
+ * seulement prévue — une session ne peut pas rester « à venir » alors qu'elle
+ * porte des actions réalisées.
  *
- * Le refus reprend mot pour mot celui de « Démarrer ce chantier » : l'index
- * unique n'autorise qu'un seul chantier ouvert par vélo, et un message clair
+ * Le refus reprend mot pour mot celui de « Démarrer cette session » : l'index
+ * unique n'autorise qu'une seule session ouverte par vélo, et un message clair
  * vaut mieux qu'une erreur de contrainte.
  */
 async function ensureStarted(
@@ -64,23 +65,28 @@ async function ensureStarted(
     .maybeSingle<{ id: string; started_at: string | null }>();
 
   if (!target) {
-    return { error: "Cette intervention est introuvable." };
+    return { error: "Cette session est introuvable." };
   }
   // Déjà démarrée, ou terminée : on ne touche à rien. Compléter après coup une
-  // intervention clôturée reste possible.
+  // session clôturée reste possible.
   if (target.started_at !== null) return null;
 
   const { data: open } = await supabase
     .from("interventions")
-    .select("title")
+    .select("title, cause, started_at, date_prevue, created_at")
     .eq("bike_id", bikeId)
     .not("started_at", "is", null)
     .is("closed_at", null)
-    .maybeSingle<{ title: string }>();
+    .maybeSingle<
+      Pick<
+        Intervention,
+        "title" | "cause" | "started_at" | "date_prevue" | "created_at"
+      >
+    >();
 
   if (open) {
     return {
-      error: `« ${open.title} » est déjà en cours sur ce vélo. Clôture-la avant d'en démarrer une autre.`,
+      error: `« ${nomDeSession(open)} » est déjà en cours sur ce vélo. Clôture-la avant d'en démarrer une autre.`,
     };
   }
 
@@ -90,7 +96,7 @@ async function ensureStarted(
     .eq("id", interventionId);
 
   if (error) {
-    return { error: "Le démarrage du chantier a échoué. Réessaie." };
+    return { error: "Le démarrage de la session a échoué. Réessaie." };
   }
   return null;
 }
@@ -109,7 +115,7 @@ export async function createEvent(
 
   const interventionId = readInterventionId(formData);
   if (!interventionId) {
-    return { error: "Aucune intervention sélectionnée.", success: false };
+    return { error: "Aucune session sélectionnée.", success: false };
   }
 
   const payload = eventPayload(formData);
@@ -153,7 +159,7 @@ export async function updateEvent(
 
   const interventionId = readInterventionId(formData);
   if (!interventionId) {
-    return { error: "Aucune intervention sélectionnée.", success: false };
+    return { error: "Aucune session sélectionnée.", success: false };
   }
 
   const { error } = await supabase
@@ -175,7 +181,7 @@ export async function updateEvent(
 }
 
 /**
- * Déplace une action d'un chantier vers un autre. Sans cela, une erreur de
+ * Déplace une action d'une session vers une autre. Sans cela, une erreur de
  * rattachement automatique deviendrait définitive.
  */
 export async function moveEvent(

@@ -52,7 +52,7 @@ export const NATURE_CHANGEMENT_DESCRIPTIONS: Record<
     "Changement de tout le module, changement de 90 % des pièces, restauration totale",
 };
 
-// Cause d'une intervention : *pourquoi* on ouvre un chantier. À ne pas confondre
+// Cause d'une session : *pourquoi* on passe à l'atelier. À ne pas confondre
 // avec l'état constaté d'une pièce, qui répond à une autre question — voir la
 // planche `parcours/03-cause-action-etat` du projet Claude Design.
 export const INTERVENTION_CAUSES = {
@@ -72,7 +72,7 @@ export const INTERVENTION_CAUSE_DESCRIPTIONS: Record<InterventionCause, string> 
     prevention: "Entretien planifié, avant que ça pose problème",
   };
 
-export const CAUSE_MANQUANTE = "Indique pourquoi tu ouvres ce chantier.";
+export const CAUSE_MANQUANTE = "Indique pourquoi tu passes à l'atelier.";
 
 /**
  * La cause est **obligatoire à la saisie mais nullable en base** : l'historique
@@ -199,4 +199,124 @@ export const ALL_PARTS: string[] = Array.from(partIndex.keys()).sort((a, b) =>
  */
 export function systemsForPart(part: string): BikeSystem[] {
   return partIndex.get(part.trim()) ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Nommer une session d'atelier
+// ---------------------------------------------------------------------------
+
+/**
+ * Noms proposés à l'ouverture d'une session. Ils ne servent pas à gagner de la
+ * frappe mais à **montrer la bonne altitude** : au test du 3 août, l'utilisateur
+ * a nommé sa session « Changer ma chaîne », c'est-à-dire du nom de l'action
+ * qu'il allait saisir juste après. Une page blanche ne dit rien de ce qu'on
+ * attend ; cinq exemples le disent sans un mot d'explication.
+ */
+export const NOMS_SESSION_SUGGERES = [
+  "Révision de printemps",
+  "Entretien annuel",
+  "Remise en état",
+  "Après une chute",
+  "Préparation de sortie",
+] as const;
+
+/** Minuscules sans accents : les deux côtés de la comparaison y passent. */
+function normaliser(texte: string): string {
+  return texte
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+/** Forme de comparaison d'un mot : normalisé, et sans sa marque de pluriel. */
+function racine(mot: string): string {
+  return normaliser(mot).replace(/[sx]$/, "");
+}
+
+/**
+ * Mots du référentiel des organes trop courants pour signaler une pièce à eux
+ * seuls. « Feu avant » et « Porte-bagages » livrent « avant » et « porte », qui
+ * apparaissent dans quantité de noms parfaitement légitimes.
+ */
+const MOTS_TROP_COURANTS = new Set([
+  "avant",
+  "arriere",
+  "garde",
+  "porte",
+  "libre",
+  "usure",
+  "mesurer",
+  "present",
+  "systeme",
+  "hydraulique",
+  "rapide",
+]);
+
+/**
+ * Les mots qui désignent une pièce, tirés du référentiel des organes. Cinq
+ * lettres minimum : en dessous, on attrape surtout des articles.
+ */
+const RACINES_DE_PIECE = new Set<string>();
+for (const part of ALL_PARTS) {
+  for (const mot of normaliser(part).split(/[^a-z]+/)) {
+    if (mot.length < 5) continue;
+    const r = racine(mot);
+    if (!MOTS_TROP_COURANTS.has(r)) RACINES_DE_PIECE.add(r);
+  }
+}
+
+/**
+ * Verbes qui décrivent un geste sur une pièce. Volontairement restreint aux
+ * formes sans ambiguïté : « réparer » et « réparation » en sont absents, parce
+ * qu'ils nomment aussi un type d'action du référentiel et qu'une session
+ * « Réparation suite à chute » est un nom parfaitement correct.
+ */
+const RACINES_DE_GESTE = new Set(
+  [
+    "changer",
+    "change",
+    "changement",
+    "remplacer",
+    "remplace",
+    "remplacement",
+    "demonter",
+    "demonte",
+    "remonter",
+    "remonte",
+    "graisser",
+    "nettoyer",
+    "nettoye",
+    "purger",
+    "regler",
+    "reglage",
+  ].map(racine)
+);
+
+export type IndiceDeGeste = {
+  /** Ce qui a été reconnu : une pièce du référentiel, ou un verbe de geste. */
+  type: "piece" | "verbe";
+  /** Le mot tel que l'utilisateur l'a écrit, pour le lui citer. */
+  mot: string;
+};
+
+/**
+ * Reconnaît un nom de session qui décrit en réalité une action — « Changer ma
+ * chaîne » plutôt que « Révision de printemps ». Sert à **informer**, jamais à
+ * refuser : quelqu'un peut légitimement appeler sa session « Chaîne et
+ * cassette ».
+ *
+ * La pièce l'emporte sur le verbe : elle permet un message plus précis.
+ */
+export function detecterNomDAction(nom: string): IndiceDeGeste | null {
+  // Pas de `\p{L}` : le drapeau `u` demande une cible ES6, que le projet ne
+  // vise pas. La plage latine couvre le vocabulaire du cycle.
+  const mots = nom.split(/[^A-Za-zÀ-ɏ]+/).filter(Boolean);
+
+  for (const mot of mots) {
+    if (RACINES_DE_PIECE.has(racine(mot))) return { type: "piece", mot };
+  }
+  for (const mot of mots) {
+    if (RACINES_DE_GESTE.has(racine(mot))) return { type: "verbe", mot };
+  }
+  return null;
 }
