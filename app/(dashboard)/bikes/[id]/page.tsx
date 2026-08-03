@@ -128,7 +128,14 @@ export default async function BikePage({
     ["Modèle", bike.model ?? "—"],
     ["Date d'achat", formatDate(bike.purchase_date)],
     ["Prix d'achat", formatPrice(bike.purchase_price)],
-    ["Kilométrage", bike.mileage_km !== null ? `${bike.mileage_km} km` : "—"],
+    [
+      "Kilométrage",
+      bike.mileage_km !== null
+        ? `${bike.mileage_km.toLocaleString("fr-FR")} km`
+        : "—",
+    ],
+    ["Numéro de série", bike.serial_number ?? "—"],
+    ["Numéro d'identification", bike.identification_number ?? "—"],
     ["Dépréciation annuelle", `${bike.depreciation_rate} %`],
     [
       "Fiche technique",
