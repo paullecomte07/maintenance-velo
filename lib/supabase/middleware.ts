@@ -51,7 +51,7 @@ export async function updateSession(request: NextRequest) {
     pathname === "/signup" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
-    pathname === "/auth/callback";
+    pathname.startsWith("/auth/callback");
 
   // Celles qui n'ont plus de sens une fois connecté. /reset-password en est
   // volontairement absent : le lien de récupération ouvre une session, et
