@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   addPiece,
+  choisirDansLeMenuChantier,
   createBike,
   deleteBike,
   group,
@@ -142,7 +143,7 @@ test("US#35 – Supprimer une intervention vide", async ({ page }) => {
   await planifierIntervention(page, chantierVide);
   await openIntervention(page, chantierVide);
 
-  await page.getByRole("button", { name: "Supprimer l'intervention" }).click();
+  await choisirDansLeMenuChantier(page, "Supprimer l'intervention");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("aucune action");
   await dialog
@@ -165,7 +166,7 @@ test("US#35 – La confirmation annonce ce qui sera perdu", async ({ page }) => 
     cout: "52",
   });
 
-  await page.getByRole("button", { name: "Supprimer l'intervention" }).click();
+  await choisirDansLeMenuChantier(page, "Supprimer l'intervention");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText(chantier);
   await expect(dialog).toContainText("2 actions");
@@ -175,7 +176,7 @@ test("US#35 – Renoncer à la suppression", async ({ page }) => {
   await openBike(page, bikeName);
   await openIntervention(page, chantier);
 
-  await page.getByRole("button", { name: "Supprimer l'intervention" }).click();
+  await choisirDansLeMenuChantier(page, "Supprimer l'intervention");
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Annuler" }).click();
   await expect(dialog).toBeHidden();
@@ -189,7 +190,7 @@ test("US#35 – Supprimer une intervention emporte ses actions", async ({
   await openBike(page, bikeName);
   await openIntervention(page, chantier);
 
-  await page.getByRole("button", { name: "Supprimer l'intervention" }).click();
+  await choisirDansLeMenuChantier(page, "Supprimer l'intervention");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Supprimer définitivement" })

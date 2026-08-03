@@ -159,6 +159,19 @@ export async function addPiece(page: Page, piece: PieceInput) {
   await fillPiece(page, piece);
 }
 
+/**
+ * Ouvre le menu ⋯ de la fiche d'un chantier et y choisit une entrée. Renommer
+ * et supprimer n'y sont plus des boutons de premier niveau : seul le geste du
+ * jour en est un.
+ */
+export async function choisirDansLeMenuChantier(
+  page: Page,
+  entree: string | RegExp
+) {
+  await page.getByRole("button", { name: "Réglages de l'intervention" }).click();
+  await page.getByRole("menuitem", { name: entree }).click();
+}
+
 /** Ouvre la fiche d'une intervention depuis la liste de la fiche vélo. */
 export async function openIntervention(page: Page, title: string) {
   await page.getByRole("link").filter({ hasText: title }).first().click();
