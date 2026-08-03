@@ -24,7 +24,7 @@ export function ChipGroup<T extends string>({
 }) {
   return (
     // Le groupe est nommé : deux groupes du même formulaire peuvent proposer
-    // le même libellé (« Accident » vaut pour un chantier comme pour une
+    // le même libellé (« Accident » vaut pour une session comme pour une
     // pièce), et rien ne relie ces boutons à leur Label sans ça.
     <div className="space-y-2" role="group" aria-label={label}>
       <div className="flex items-center gap-2">

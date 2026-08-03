@@ -34,7 +34,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BIKE_SYSTEMS, NATURE_CHANGEMENT_TYPES } from "@/lib/reference-data";
-import type { Intervention, MaintenanceEvent } from "@/lib/types";
+import {
+  nomDeSession,
+  type Intervention,
+  type MaintenanceEvent,
+} from "@/lib/types";
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("fr-FR");
@@ -96,7 +100,7 @@ function DeleteEventDialog({
 }
 
 /**
- * Déplacer une action d'un chantier vers un autre : sans cela, une erreur de
+ * Déplacer une action d'une session vers une autre : sans cela, une erreur de
  * rattachement automatique deviendrait définitive.
  */
 function MoveEventDialog({
@@ -122,23 +126,23 @@ function MoveEventDialog({
         <DialogHeader>
           <DialogTitle>Déplacer « {event.title} »</DialogTitle>
           <DialogDescription>
-            Choisis l&apos;intervention qui doit porter cette action.
+            Choisis la session qui doit porter cette action.
           </DialogDescription>
         </DialogHeader>
         {others.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Ce vélo n&apos;a pas d&apos;autre intervention où déplacer cette
+            Ce vélo n&apos;a pas d&apos;autre session où déplacer cette
             action.
           </p>
         ) : (
           <Select value={target} onValueChange={setTarget}>
-            <SelectTrigger aria-label="Intervention de destination">
-              <SelectValue placeholder="Sélectionner une intervention" />
+            <SelectTrigger aria-label="Session de destination">
+              <SelectValue placeholder="Sélectionner une session" />
             </SelectTrigger>
             <SelectContent>
               {others.map((intervention) => (
                 <SelectItem key={intervention.id} value={intervention.id}>
-                  {intervention.title}
+                  {nomDeSession(intervention)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -178,7 +182,7 @@ export function MaintenanceSection({
   events: MaintenanceEvent[];
   /** Toutes les interventions du vélo — nécessaires pour le déplacement. */
   interventions: Intervention[];
-  /** Le chantier dont on liste les actions. */
+  /** La session dont on liste les actions. */
   interventionId: string;
   lastMileageKm?: number | null;
 }) {
@@ -203,7 +207,7 @@ export function MaintenanceSection({
       <CardContent className="space-y-4">
         {events.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            Aucune action enregistrée dans ce chantier.
+            Aucune action enregistrée dans cette session.
           </p>
         ) : (
           <>

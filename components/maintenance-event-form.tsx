@@ -56,10 +56,10 @@ function SubmitButton({
 }
 
 /**
- * Saisie d'une action. L'intervention est **toujours** connue à l'avance :
- * on n'entre dans ce formulaire que depuis la fiche d'un chantier. C'est ce
- * qui a permis de retirer la question du titre et de la cause au milieu de la
- * saisie — l'intervention n'est plus un effet de bord de la première action.
+ * Saisie d'une action. La session est **toujours** connue à l'avance : on
+ * n'entre dans ce formulaire que depuis sa fiche. C'est ce qui a permis de
+ * retirer la question du nom et de la cause au milieu de la saisie — la session
+ * n'est plus un effet de bord de la première action.
  */
 export function MaintenanceEventForm({
   action,
@@ -73,7 +73,7 @@ export function MaintenanceEventForm({
     formData: FormData
   ) => Promise<EventFormState>;
   event?: MaintenanceEvent;
-  /** Chantier auquel l'action est rattachée. */
+  /** Session à laquelle l'action est rattachée. */
   interventionId: string;
   /** Dernier kilométrage connu, proposé par défaut. */
   lastMileageKm?: number | null;
@@ -115,7 +115,7 @@ export function MaintenanceEventForm({
     if (!state.success) return;
 
     if (continuer.current) {
-      // On reste dans le formulaire pour l'action suivante du même chantier.
+      // On reste dans le formulaire pour l'action suivante de la même session.
       continuer.current = false;
       setTitle("");
       setSystem(null);
@@ -241,7 +241,7 @@ export function MaintenanceEventForm({
       </div>
 
       {/* L'état est une **observation**, pas une intention : il ne se déduit
-          jamais de la cause du chantier. Une casse d'usure peut très bien
+          jamais de la cause de la session. Une casse d'usure peut très bien
           contenir des pièces trouvées en bon état. */}
       <ChipGroup
         label="Dans quel état tu l'as trouvée ?"
@@ -297,7 +297,7 @@ export function MaintenanceEventForm({
             Choisis l&apos;action, le système et l&apos;état pour enregistrer.
           </p>
         )}
-        {/* Un chantier compte 1 à 4 pièces : sans ce second bouton, chacune
+        {/* Une session compte 1 à 4 pièces : sans ce second bouton, chacune
             imposerait un aller-retour par la navigation. */}
         {!event && (
           <SubmitButton

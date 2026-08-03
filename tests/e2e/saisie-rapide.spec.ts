@@ -5,10 +5,10 @@ import {
   createBike,
   deleteBike,
   openBike,
-  openIntervention,
+  ouvrirFicheSession,
   pickChip,
   pickSystem,
-  planifierIntervention,
+  planifierSession,
   testBikeName,
 } from "./support";
 
@@ -58,8 +58,8 @@ test("US#24 – Le kilométrage est pré-rempli avec le dernier relevé", async 
   page,
 }) => {
   await openBike(page, bikeName);
-  await planifierIntervention(page, chantier);
-  await openIntervention(page, chantier);
+  await planifierSession(page, chantier);
+  await ouvrirFicheSession(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
@@ -72,7 +72,7 @@ test("US#24 – Le kilométrage est pré-rempli avec le dernier relevé", async 
 
 test("US#24 – Le système se déduit de la pièce choisie", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
@@ -90,7 +90,7 @@ test("US#24 – Une pièce ambiguë propose les systèmes concernés", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
@@ -111,7 +111,7 @@ test("US#24 – Enregistrer une pièce quand aucun chantier n'est ouvert", async
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   await addPiece(page, {
     titre: "[TEST] Chaîne",
@@ -127,7 +127,7 @@ test("US#24 – Enregistrer une pièce quand un chantier est ouvert", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   // Aucune question sur l'intervention : on saisit depuis sa fiche, elle est
@@ -143,7 +143,7 @@ test("US#24 – Enregistrer une pièce sans en connaître le coût", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   await addPiece(page, {
     titre: "[TEST] Câbles et gaines de vitesses",

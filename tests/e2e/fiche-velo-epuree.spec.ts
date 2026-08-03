@@ -2,14 +2,14 @@ import { expect, test } from "@playwright/test";
 
 import {
   addPiece,
-  choisirDansLeMenuChantier,
+  choisirDansLeMenuSession,
   createBike,
   deleteBike,
   group,
   openBike,
-  openIntervention,
+  ouvrirFicheSession,
   ouvrirFicheIdentite,
-  planifierIntervention,
+  planifierSession,
   testBikeName,
 } from "./support";
 
@@ -82,7 +82,7 @@ test("US#34 – La fiche vélo ne propose plus d'ajouter une action", async ({
 
   // Seule l'entrée par l'intervention subsiste.
   await expect(
-    page.getByRole("button", { name: "Planifier une intervention" })
+    page.getByRole("button", { name: "Planifier une session" })
   ).toBeVisible();
 });
 
@@ -100,8 +100,8 @@ test("US#34 – Modifier et supprimer vivent dans la fiche d'identité", async (
 
 test("US#34 – On ajoute une action depuis l'intervention", async ({ page }) => {
   await openBike(page, bikeName);
-  await planifierIntervention(page, chantier);
-  await openIntervention(page, chantier);
+  await planifierSession(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   // Le chantier est encore « à venir » : rien n'y a été consigné.
   await expect(page.getByText("À venir").first()).toBeVisible();
@@ -113,7 +113,7 @@ test("US#34 – On ajoute une action depuis l'intervention", async ({ page }) =>
     dialog.getByLabel(/Tu démarres un nouveau chantier/)
   ).toBeHidden();
   await expect(
-    dialog.getByRole("group", { name: "Pourquoi ce chantier ?" })
+    dialog.getByRole("group", { name: "Pourquoi tu passes à l'atelier ?" })
   ).toBeHidden();
   await dialog.getByRole("button", { name: "Close" }).click();
   await expect(dialog).toBeHidden();
@@ -123,7 +123,7 @@ test("US#34 – Consigner du travail fait démarre le chantier", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   await addPiece(page, {
     titre: "[TEST] Chaîne",
@@ -140,10 +140,10 @@ test("US#34 – Consigner du travail fait démarre le chantier", async ({
 
 test("US#35 – Supprimer une intervention vide", async ({ page }) => {
   await openBike(page, bikeName);
-  await planifierIntervention(page, chantierVide);
-  await openIntervention(page, chantierVide);
+  await planifierSession(page, chantierVide);
+  await ouvrirFicheSession(page, chantierVide);
 
-  await choisirDansLeMenuChantier(page, "Supprimer l'intervention");
+  await choisirDansLeMenuSession(page, "Supprimer la session");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText("aucune action");
   await dialog
@@ -156,7 +156,7 @@ test("US#35 – Supprimer une intervention vide", async ({ page }) => {
 
 test("US#35 – La confirmation annonce ce qui sera perdu", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   // Une seconde action, pour que la confirmation ait deux à annoncer.
   await addPiece(page, {
@@ -166,7 +166,7 @@ test("US#35 – La confirmation annonce ce qui sera perdu", async ({ page }) => 
     cout: "52",
   });
 
-  await choisirDansLeMenuChantier(page, "Supprimer l'intervention");
+  await choisirDansLeMenuSession(page, "Supprimer la session");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toContainText(chantier);
   await expect(dialog).toContainText("2 actions");
@@ -174,9 +174,9 @@ test("US#35 – La confirmation annonce ce qui sera perdu", async ({ page }) => 
 
 test("US#35 – Renoncer à la suppression", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
-  await choisirDansLeMenuChantier(page, "Supprimer l'intervention");
+  await choisirDansLeMenuSession(page, "Supprimer la session");
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Annuler" }).click();
   await expect(dialog).toBeHidden();
@@ -188,9 +188,9 @@ test("US#35 – Supprimer une intervention emporte ses actions", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
-  await choisirDansLeMenuChantier(page, "Supprimer l'intervention");
+  await choisirDansLeMenuSession(page, "Supprimer la session");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Supprimer définitivement" })

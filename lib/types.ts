@@ -1,9 +1,10 @@
-import type {
-  BikeCategory,
-  BikeSystem,
-  EtatConstate,
-  InterventionCause,
-  NatureChangementType,
+import {
+  INTERVENTION_CAUSES,
+  type BikeCategory,
+  type BikeSystem,
+  type EtatConstate,
+  type InterventionCause,
+  type NatureChangementType,
 } from "@/lib/reference-data";
 
 export type Bike = {
@@ -24,22 +25,27 @@ export type Bike = {
   created_at: string;
 };
 
-// Une intervention est un chantier qui traverse trois états. L'état n'est pas
-// stocké : il se déduit des deux dates, ce qui évite qu'il puisse diverger.
+// Une session d'atelier traverse trois états. L'état n'est pas stocké : il se
+// déduit des deux dates, ce qui évite qu'il puisse diverger.
 export type InterventionStatus = "a_venir" | "en_cours" | "terminee";
 
 export type Intervention = {
   id: string;
   bike_id: string;
-  title: string;
-  /** Date d'ouverture réelle. `null` tant que le chantier n'a pas démarré. */
+  /**
+   * Nom donné par l'utilisateur. `null` quand il n'en a pas donné : l'exiger
+   * était précisément ce qui poussait à y recopier le nom de l'action à venir
+   * — « Changer ma chaîne » plutôt que « Révision de printemps ».
+   */
+  title: string | null;
+  /** Date d'ouverture réelle. `null` tant que la session n'a pas démarré. */
   started_at: string | null;
-  /** Date à laquelle le chantier est prévu, pour les interventions à venir. */
+  /** Date à laquelle la session est prévue, pour celles à venir. */
   date_prevue: string | null;
-  /** `null` tant que le chantier n'est pas clôturé. */
+  /** `null` tant que la session n'est pas clôturée. */
   closed_at: string | null;
   /**
-   * Pourquoi ce chantier est ouvert. Obligatoire à la saisie, mais `null` sur
+   * Pourquoi cette session est ouverte. Obligatoire à la saisie, mais `null` sur
    * tout l'historique importé : la migration n'invente aucune cause.
    */
   cause: InterventionCause | null;
@@ -61,7 +67,35 @@ export const INTERVENTION_STATUS_LABELS: Record<InterventionStatus, string> = {
   terminee: "Terminée",
 };
 
-/** Une intervention à venir dont la date prévue est dépassée. */
+/**
+ * Ce qu'on affiche pour désigner une session. Une session sans nom se lit par
+ * sa cause et sa date — « Prévention · 3 août » — ce qui, contrairement à un
+ * « Session du 15 mars », dit encore quelque chose six mois plus tard.
+ *
+ * Jamais de libellé vide ni d'identifiant technique : une session doit rester
+ * reconnaissable dans une liste.
+ */
+export function nomDeSession(
+  session: Pick<
+    Intervention,
+    "title" | "cause" | "started_at" | "date_prevue" | "created_at"
+  >
+): string {
+  const nom = session.title?.trim();
+  if (nom) return nom;
+
+  const cause = session.cause
+    ? INTERVENTION_CAUSES[session.cause]
+    : "Session d'atelier";
+  const date = session.started_at ?? session.date_prevue ?? session.created_at;
+
+  return `${cause} · ${new Date(date).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+  })}`;
+}
+
+/** Une session à venir dont la date prévue est dépassée. */
 export function isEnRetard(
   intervention: Pick<Intervention, "started_at" | "closed_at" | "date_prevue">,
   today = new Date()

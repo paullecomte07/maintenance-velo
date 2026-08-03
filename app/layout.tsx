@@ -18,7 +18,7 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Maintenance vélo",
   description:
-    "Suivi de maintenance d'une flotte de vélos personnelle : interventions, actions menées, coûts et valeur estimée.",
+    "Suivi de maintenance d'une flotte de vélos personnelle : sessions d'atelier, actions menées, coûts et valeur estimée.",
 };
 
 export const viewport: Viewport = {

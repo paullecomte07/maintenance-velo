@@ -6,9 +6,9 @@ import {
   deleteBike,
   group,
   openBike,
-  openIntervention,
+  ouvrirFicheSession,
   pickChip,
-  planifierIntervention,
+  planifierSession,
   pickSystem,
   testBikeName,
 } from "./support";
@@ -65,8 +65,8 @@ test("US#4 – Créer un vélo de test (action)", async ({ page }) => {
 
 test("US#30 – On ajoute une action, plus une pièce", async ({ page }) => {
   await openBike(page, bikeName);
-  await planifierIntervention(page, preparatoire);
-  await openIntervention(page, preparatoire);
+  await planifierSession(page, preparatoire);
+  await ouvrirFicheSession(page, preparatoire);
 
   // Le vocabulaire suit le modèle : on ajoute une action, pas une pièce.
   await expect(
@@ -85,7 +85,7 @@ test("US#30 – Impossible d'enregistrer sans action ni état", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, preparatoire);
+  await ouvrirFicheSession(page, preparatoire);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
@@ -113,8 +113,8 @@ test("US#30 – Enchaîner plusieurs actions sur le même chantier", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await planifierIntervention(page, chantier);
-  await openIntervention(page, chantier);
+  await planifierSession(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   await page.getByRole("button", { name: "Ajouter une action" }).click();
   const dialog = page.getByRole("dialog");
@@ -157,14 +157,14 @@ test("US#30 – Enchaîner plusieurs actions sur le même chantier", async ({
 
 test("US#30 – La cause n'est plus demandée à la pièce", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
   // Ni la cause de la pièce (supprimée), ni celle du chantier (déjà connue).
   await expect(dialog.getByRole("group", { name: "Type de cause" })).toBeHidden();
   await expect(
-    dialog.getByRole("group", { name: "Pourquoi ce chantier ?" })
+    dialog.getByRole("group", { name: "Pourquoi tu passes à l'atelier ?" })
   ).toBeHidden();
 });
 
@@ -172,7 +172,7 @@ test("US#30 – Enregistrer une inspection qui ne change rien", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   // Rien n'est remplacé, rien n'est dépensé — et c'est pourtant la donnée la
   // plus utile : cette pièce allait bien à ce kilométrage.
@@ -194,7 +194,7 @@ test("US#30 – Enregistrer une inspection qui ne change rien", async ({
 
 test("US#30 – L'état constaté apparaît sur chaque ligne", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   // Le libellé est toujours écrit : la couleur ne porte jamais le sens seule.
   for (const [piece, action, etat] of [

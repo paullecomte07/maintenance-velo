@@ -4,7 +4,7 @@ import {
   createBike,
   deleteBike,
   openBike,
-  openIntervention,
+  ouvrirFicheSession,
   pickChip,
   testBikeName,
 } from "./support";
@@ -102,7 +102,7 @@ async function stubSansSpeech(page: Page) {
 
 async function ouvrirFormulaire(page: Page) {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Planifier une intervention" }).click();
+  await page.getByRole("button", { name: "Planifier une session" }).click();
   return page.getByRole("dialog");
 }
 
@@ -120,12 +120,12 @@ test("US#38 – Dicter une note", async ({ page }) => {
   );
 
   // La note dictée est bien celle qui part en base.
-  await dialog.getByLabel(/Nom de l.intervention/).fill(chantier);
-  await pickChip(dialog, "Pourquoi ce chantier ?", "Prévention");
+  await dialog.getByLabel(/Nom de la session/).fill(chantier);
+  await pickChip(dialog, "Pourquoi tu passes à l'atelier ?", "Prévention");
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
   await expect(
     page.getByText(/chaîne mesurée à zéro virgule sept cinq/)
   ).toBeVisible();
@@ -180,8 +180,8 @@ test("US#38 – Un micro refusé ne bloque rien", async ({ page }) => {
   await expect(page.getByText(/Accès au micro refusé/)).toBeVisible();
 
   // Le formulaire fonctionne toujours.
-  await dialog.getByLabel(/Nom de l.intervention/).fill("[TEST] Malgré tout");
-  await pickChip(dialog, "Pourquoi ce chantier ?", "Prévention");
+  await dialog.getByLabel(/Nom de la session/).fill("[TEST] Malgré tout");
+  await pickChip(dialog, "Pourquoi tu passes à l'atelier ?", "Prévention");
   await dialog.getByRole("button", { name: "Ajouter", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 });

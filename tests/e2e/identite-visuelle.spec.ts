@@ -5,8 +5,8 @@ import {
   createBike,
   deleteBike,
   openBike,
-  openIntervention,
-  planifierIntervention,
+  ouvrirFicheSession,
+  planifierSession,
   testBikeName,
 } from "./support";
 
@@ -134,8 +134,8 @@ test("US#28 – L'action principale se distingue des actions secondaires", async
   page,
 }) => {
   await openBike(page, bikeName);
-  await planifierIntervention(page, chantier);
-  await openIntervention(page, chantier);
+  await planifierSession(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   const fond = (nom: string) =>
     page
@@ -148,9 +148,7 @@ test("US#28 – L'action principale se distingue des actions secondaires", async
   // Les gestes secondaires restent neutres, pour ne pas diluer l'attention.
   // Depuis US#46, « Renommer » et « Supprimer » ne sont plus des boutons : le
   // geste secondaire visible de cet écran est le menu des réglages.
-  expect(await fond("Réglages de l'intervention")).not.toBe(
-    "rgb(28, 92, 171)"
-  );
+  expect(await fond("Réglages de la session")).not.toBe("rgb(28, 92, 171)");
 });
 
 test("US#28 – Les états constatés sont visuellement distincts", async ({
@@ -158,7 +156,7 @@ test("US#28 – Les états constatés sont visuellement distincts", async ({
 }) => {
   test.setTimeout(120_000);
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   const etats = ["Neuf", "Usure normale", "Usure prématurée", "HS"];
   const pieces = ["[TEST] Selle", "[TEST] Chaîne", "[TEST] Pneus", "[TEST] Cintre"];
@@ -192,7 +190,7 @@ test("US#28 – Le texte reste lisible partout", async ({ page }) => {
   // La fiche du chantier porte le plus de pastilles colorées de toute
   // l'application : c'est là que le risque est le plus élevé.
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
   expect(await contrastesInsuffisants(page)).toEqual([]);
 
   // Puis la fiche vélo, avec ses causes et ses états d'intervention.
