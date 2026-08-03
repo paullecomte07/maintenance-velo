@@ -7,7 +7,7 @@ import {
   parseInterventionCause,
 } from "@/lib/reference-data";
 import { createClient } from "@/lib/supabase/server";
-import type { Intervention } from "@/lib/types";
+import { nomDeSession, type Intervention } from "@/lib/types";
 
 export type InterventionFormState = { error: string | null; success: boolean };
 
@@ -21,7 +21,7 @@ function revalidateBike(bikeId: string) {
 }
 
 /**
- * Le chantier ouvert d'un vélo, s'il y en a un. Il ne peut y en avoir qu'un :
+ * La session ouverte d'un vélo, s'il y en a une. Il ne peut y en avoir qu'une :
  * un index unique partiel le garantit en base, et c'est cette contrainte qui
  * permet de rattacher une pièce sans jamais poser de question à la saisie.
  */
@@ -41,9 +41,8 @@ export async function getOpenIntervention(
 }
 
 /**
- * Crée une intervention **à venir** : un chantier planifié, pas encore démarré.
- * L'ouverture d'un chantier passe soit par la saisie d'une première pièce,
- * soit par `startIntervention`.
+ * Crée une session **à venir** : planifiée, pas encore démarrée. L'ouverture
+ * passe soit par la saisie d'une première action, soit par `startIntervention`.
  */
 export async function createIntervention(
   bikeId: string,
@@ -52,10 +51,10 @@ export async function createIntervention(
 ): Promise<InterventionFormState> {
   const supabase = createClient();
 
+  // Le nom n'est plus exigé : c'est ce champ obligatoire, page blanche et
+  // premier de l'écran, qui poussait à y recopier l'action à venir. Une session
+  // sans nom se lit par sa cause et sa date.
   const title = (formData.get("title") as string)?.trim();
-  if (!title) {
-    return { error: "Donne un nom à cette intervention.", success: false };
-  }
 
   const cause = parseInterventionCause(formData.get("cause"));
   if (!cause) {
@@ -67,7 +66,7 @@ export async function createIntervention(
 
   const { error } = await supabase.from("interventions").insert({
     bike_id: bikeId,
-    title,
+    title: title || null,
     cause,
     date_prevue: datePrevue || null,
     note: note || null,
@@ -77,7 +76,7 @@ export async function createIntervention(
 
   if (error) {
     return {
-      error: "L'enregistrement de l'intervention a échoué. Réessaie.",
+      error: "L'enregistrement de la session a échoué. Réessaie.",
       success: false,
     };
   }
@@ -86,7 +85,7 @@ export async function createIntervention(
   return { error: null, success: true };
 }
 
-/** Renommer, changer la date prévue, modifier la note. */
+/** Nommer ou renommer, changer la date prévue, modifier la note. */
 export async function updateIntervention(
   interventionId: string,
   bikeId: string,
@@ -96,11 +95,8 @@ export async function updateIntervention(
   const supabase = createClient();
 
   const title = (formData.get("title") as string)?.trim();
-  if (!title) {
-    return { error: "Donne un nom à cette intervention.", success: false };
-  }
 
-  // Une intervention importée n'a pas de cause. Ne pas l'exiger ici évite
+  // Une session importée n'a pas de cause. Ne pas l'exiger ici évite
   // d'obliger à en inventer une juste pour corriger un titre — mais une cause
   // déjà posée n'est jamais retirée.
   const cause = parseInterventionCause(formData.get("cause"));
@@ -111,7 +107,7 @@ export async function updateIntervention(
   const { error } = await supabase
     .from("interventions")
     .update({
-      title,
+      title: title || null,
       ...(cause ? { cause } : {}),
       date_prevue: datePrevue || null,
       note: note || null,
@@ -120,7 +116,7 @@ export async function updateIntervention(
 
   if (error) {
     return {
-      error: "La modification de l'intervention a échoué. Réessaie.",
+      error: "La modification de la session a échoué. Réessaie.",
       success: false,
     };
   }
@@ -130,7 +126,7 @@ export async function updateIntervention(
 }
 
 /**
- * Démarre un chantier prévu. Refusé si un autre chantier est déjà ouvert sur
+ * Démarre une session prévue. Refusé si une autre session est déjà ouverte sur
  * ce vélo : le rattachement automatique deviendrait ambigu.
  */
 export async function startIntervention(
@@ -142,7 +138,7 @@ export async function startIntervention(
   const open = await getOpenIntervention(bikeId);
   if (open && open.id !== interventionId) {
     return {
-      error: `« ${open.title} » est déjà en cours sur ce vélo. Clôture-la avant d'en démarrer une autre.`,
+      error: `« ${nomDeSession(open)} » est déjà en cours sur ce vélo. Clôture-la avant d'en démarrer une autre.`,
     };
   }
 
@@ -152,7 +148,7 @@ export async function startIntervention(
     .eq("id", interventionId);
 
   if (error) {
-    return { error: "Le démarrage du chantier a échoué. Réessaie." };
+    return { error: "Le démarrage de la session a échoué. Réessaie." };
   }
 
   revalidateBike(bikeId);
@@ -160,8 +156,8 @@ export async function startIntervention(
 }
 
 /**
- * Clôture un chantier. C'est toujours une action explicite : rien ne se ferme
- * tout seul, un chantier peut dormir des semaines sans être fini.
+ * Clôture une session. C'est toujours une action explicite : rien ne se ferme
+ * tout seul, une session peut dormir des semaines sans être finie.
  */
 export async function closeIntervention(
   interventionId: string,
@@ -176,7 +172,7 @@ export async function closeIntervention(
     .not("started_at", "is", null);
 
   if (error) {
-    return { error: "La clôture de l'intervention a échoué. Réessaie." };
+    return { error: "La clôture de la session a échoué. Réessaie." };
   }
 
   revalidateBike(bikeId);
@@ -184,10 +180,10 @@ export async function closeIntervention(
 }
 
 /**
- * Supprime une intervention **et ses actions**.
+ * Supprime une session **et ses actions**.
  *
  * Le refus précédent — « déplace d'abord tes actions » — rendait ineffaçable
- * toute intervention ouverte par erreur dès qu'on y avait consigné quelque
+ * toute session ouverte par erreur dès qu'on y avait consigné quelque
  * chose, c'est-à-dire le cas courant. La protection ne disparaît pas pour
  * autant : elle passe dans la confirmation, qui annonce combien d'actions
  * seront perdues. C'est le seul endroit de l'application où de l'historique de
@@ -217,7 +213,7 @@ export async function deleteIntervention(
     .eq("id", interventionId);
 
   if (error) {
-    return { error: "La suppression de l'intervention a échoué." };
+    return { error: "La suppression de la session a échoué." };
   }
 
   revalidateBike(bikeId);

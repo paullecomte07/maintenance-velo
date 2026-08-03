@@ -95,9 +95,9 @@ export default async function BikePage({
   const openIntervention = enCours[0] ?? null;
   const deleteAction = deleteBike.bind(null, bike.id);
 
-  // Rappel de clôture : un chantier qui dort depuis plus d'un mois est
-  // probablement fini. On le signale sans jamais le fermer d'office — en usage
-  // loisir, un chantier peut légitimement rester ouvert des semaines.
+  // Rappel de clôture : une session qui dort depuis plus d'un mois est
+  // probablement finie. On le signale sans jamais la fermer d'office — en usage
+  // loisir, une session peut légitimement rester ouverte des semaines.
   const STALE_AFTER_DAYS = 30;
   let staleReminder: { days: number; lastActivity: string | null } | null = null;
   let closeStaleAction: (() => Promise<{ error: string | null }>) | undefined;
@@ -169,7 +169,7 @@ export default async function BikePage({
       />
 
       {/* Repliée par défaut : la fiche vélo sert d'abord à voir où en sont les
-          chantiers, pas à relire les caractéristiques de la machine. */}
+          sessions, pas à relire les caractéristiques de la machine. */}
       <Card>
         <CardContent className="p-0">
           <details className="group">

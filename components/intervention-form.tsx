@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  detecterNomDAction,
   INTERVENTION_CAUSE_DESCRIPTIONS,
   INTERVENTION_CAUSES,
+  NOMS_SESSION_SUGGERES,
   type InterventionCause,
 } from "@/lib/reference-data";
 import type { Intervention } from "@/lib/types";
@@ -52,6 +54,7 @@ export function InterventionForm({
   const [cause, setCause] = useState<InterventionCause | null>(
     intervention?.cause ?? null
   );
+  const [title, setTitle] = useState(intervention?.title ?? "");
   const [note, setNote] = useState(intervention?.note ?? "");
 
   /**
@@ -61,36 +64,30 @@ export function InterventionForm({
   function ajouterAuTexte(texte: string) {
     setNote((actuel) => (actuel ? `${actuel.trimEnd()} ${texte}` : texte));
   }
-  // Seule exception à l'obligation : corriger une intervention importée, dont
-  // la cause est inconnue et le restera. L'exiger reviendrait à en faire
-  // inventer une — le défaut même que cette refonte corrige.
+  // Seule exception à l'obligation : corriger une session importée, dont la
+  // cause est inconnue et le restera. L'exiger reviendrait à en faire inventer
+  // une — le défaut même que cette refonte corrige.
   const causeFacultative = intervention !== undefined && intervention.cause === null;
+
+  // Le nom décrit-il une action plutôt qu'une session ? On le signale, on ne
+  // l'interdit pas : « Chaîne et cassette » est un nom de session recevable.
+  const indice = detecterNomDAction(title);
 
   useEffect(() => {
     if (state.success) {
-      toast.success(
-        intervention ? "Intervention modifiée." : "Intervention ajoutée."
-      );
+      toast.success(intervention ? "Session modifiée." : "Session ajoutée.");
       onSuccess();
     }
   }, [state, intervention, onSuccess]);
 
   return (
     <form action={formAction} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="title">Nom de l&apos;intervention *</Label>
-        <Input
-          id="title"
-          name="title"
-          required
-          defaultValue={intervention?.title}
-          placeholder="Ex : Révision de printemps"
-        />
-      </div>
-
-      {/* Une seule cause pour tout le chantier, jamais par pièce. */}
+      {/* La cause d'abord. C'est la seule question déjà à la bonne altitude :
+          elle porte sur le passage à l'atelier, pas sur une pièce. La poser en
+          premier plante le cadre avant que la page blanche du nom ne le
+          défasse. Une seule cause pour toute la session, jamais par pièce. */}
       <ChipGroup
-        label="Pourquoi ce chantier ?"
+        label="Pourquoi tu passes à l'atelier ?"
         options={INTERVENTION_CAUSES}
         value={cause}
         onChange={setCause}
@@ -98,13 +95,73 @@ export function InterventionForm({
           cause
             ? INTERVENTION_CAUSE_DESCRIPTIONS[cause]
             : causeFacultative
-              ? "Cette intervention vient de ton historique importé : sa cause est inconnue. Tu peux la renseigner, ou la laisser vide."
+              ? "Cette session vient de ton historique importé : sa cause est inconnue. Tu peux la renseigner, ou la laisser vide."
               : undefined
         }
       />
       <input type="hidden" name="cause" value={cause ?? ""} />
 
-      {/* Facultative : un chantier peut être prévu « un jour », sans échéance. */}
+      <div className="space-y-2">
+        <Label htmlFor="title">
+          Nom de la session{" "}
+          <span className="font-normal text-muted-foreground">
+            (facultatif)
+          </span>
+        </Label>
+        <Input
+          id="title"
+          name="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Ex : Révision de printemps"
+        />
+
+        {/* Montrer la bonne altitude plutôt que l'expliquer. Rien n'est
+            pré-rempli : ces noms attendent un clic. */}
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="group"
+          aria-label="Noms proposés"
+        >
+          {NOMS_SESSION_SUGGERES.map((nom) => (
+            <button
+              key={nom}
+              type="button"
+              onClick={() => setTitle(nom)}
+              className="rounded-full border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
+            >
+              {nom}
+            </button>
+          ))}
+        </div>
+
+        {indice && (
+          <p className="text-xs text-muted-foreground">
+            {indice.type === "piece" ? (
+              <>
+                «&nbsp;{indice.mot}&nbsp;» est une pièce. Ici on nomme la
+                session entière — tu la noteras juste après, en ajoutant une
+                action. Par exemple : «&nbsp;Révision de printemps&nbsp;».
+              </>
+            ) : (
+              <>
+                «&nbsp;{indice.mot}&nbsp;» décrit un geste. Ici on nomme la
+                session entière — tu noteras les gestes juste après, en
+                ajoutant des actions. Par exemple : «&nbsp;Entretien
+                annuel&nbsp;».
+              </>
+            )}
+          </p>
+        )}
+
+        {!title.trim() && (
+          <p className="text-xs text-muted-foreground">
+            Sans nom, cette session s&apos;affichera par sa cause et sa date.
+          </p>
+        )}
+      </div>
+
+      {/* Facultative : une session peut être prévue « un jour », sans échéance. */}
       <div className="space-y-2">
         <Label htmlFor="date_prevue">Date prévue</Label>
         <Input
@@ -115,7 +172,7 @@ export function InterventionForm({
         />
         <p className="text-xs text-muted-foreground">
           Laisse vide si tu ne sais pas encore quand. Une date dépassée fait
-          apparaître l&apos;intervention comme en retard.
+          apparaître la session comme en retard.
         </p>
       </div>
 

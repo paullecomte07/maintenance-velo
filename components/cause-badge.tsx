@@ -6,7 +6,7 @@ import {
 import type { Intervention } from "@/lib/types";
 
 /**
- * La cause d'un chantier, sur une échelle de gravité : ce qu'on a subi se
+ * La cause d'une session, sur une échelle de gravité : ce qu'on a subi se
  * signale, ce qu'on a choisi reste neutre.
  *
  * « Casse d'usure » et « Dysfonctionnement » partagent volontairement la même

@@ -2,12 +2,12 @@ import { expect, test } from "@playwright/test";
 
 import {
   addPiece,
-  choisirDansLeMenuChantier,
+  choisirDansLeMenuSession,
   createBike,
   deleteBike,
   group,
   openBike,
-  openIntervention,
+  ouvrirFicheSession,
   pickChip,
   pickSystem,
   testBikeName,
@@ -56,10 +56,10 @@ test("US#4 – Créer un vélo de test (cause)", async ({ page }) => {
 
 test("US#29 – Ouvrir un chantier demande sa cause", async ({ page }) => {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Planifier une intervention" }).click();
+  await page.getByRole("button", { name: "Planifier une session" }).click();
 
   const dialog = page.getByRole("dialog");
-  const cause = dialog.getByRole("group", { name: "Pourquoi ce chantier ?" });
+  const cause = dialog.getByRole("group", { name: "Pourquoi tu passes à l'atelier ?" });
   await expect(cause).toBeVisible();
 
   // Aucune valeur pré-cochée : une cause par défaut falsifierait exactement la
@@ -78,24 +78,24 @@ test("US#29 – Ouvrir un chantier demande sa cause", async ({ page }) => {
 
 test("US#29 – Impossible d'enregistrer sans cause", async ({ page }) => {
   await openBike(page, bikeName);
-  await page.getByRole("button", { name: "Planifier une intervention" }).click();
+  await page.getByRole("button", { name: "Planifier une session" }).click();
 
   const dialog = page.getByRole("dialog");
   const ajouter = dialog.getByRole("button", { name: "Ajouter", exact: true });
 
   // Tout est renseigné sauf la cause.
-  await dialog.getByLabel(/Nom de l.intervention/).fill(chantier);
+  await dialog.getByLabel(/Nom de la session/).fill(chantier);
   await expect(ajouter).toBeDisabled();
 
   // Elle seule débloque l'enregistrement.
-  await pickChip(dialog, "Pourquoi ce chantier ?", "Accident");
+  await pickChip(dialog, "Pourquoi tu passes à l'atelier ?", "Accident");
   await expect(ajouter).toBeEnabled();
 
   await ajouter.click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
   // Puis une action, qui fait passer le chantier « en cours ».
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
   await addPiece(page, {
     titre: "[TEST] Cintre",
     systeme: "Direction",
@@ -117,14 +117,14 @@ test("US#29 – La cause n'est demandée qu'une fois par chantier", async ({
   page,
 }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
   await page.getByRole("button", { name: "Ajouter une action" }).click();
 
   const dialog = page.getByRole("dialog");
   // Le chantier porte déjà sa cause : le formulaire d'action ne la redemande
   // jamais, ni pour le chantier ni pour la pièce.
   await expect(
-    dialog.getByRole("group", { name: "Pourquoi ce chantier ?" })
+    dialog.getByRole("group", { name: "Pourquoi tu passes à l'atelier ?" })
   ).toBeHidden();
 
   await dialog.getByLabel(/Sur quelle pièce/).fill("[TEST] Potence");
@@ -137,13 +137,13 @@ test("US#29 – La cause n'est demandée qu'une fois par chantier", async ({
 
 test("US#29 – Corriger la cause d'une intervention", async ({ page }) => {
   await openBike(page, bikeName);
-  await openIntervention(page, chantier);
+  await ouvrirFicheSession(page, chantier);
 
   await expect(page.getByText("Accident").first()).toBeVisible();
 
-  await choisirDansLeMenuChantier(page, "Renommer");
+  await choisirDansLeMenuSession(page, "Renommer");
   const dialog = page.getByRole("dialog");
-  await pickChip(dialog, "Pourquoi ce chantier ?", "Dysfonctionnement");
+  await pickChip(dialog, "Pourquoi tu passes à l'atelier ?", "Dysfonctionnement");
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 

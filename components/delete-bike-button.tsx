@@ -36,7 +36,7 @@ export function DeleteBikeButton({
         <DialogHeader>
           <DialogTitle>Supprimer « {bikeName} » ?</DialogTitle>
           <DialogDescription>
-            Le vélo, ses interventions et toutes leurs actions seront
+            Le vélo, ses sessions d&apos;atelier et toutes leurs actions seront
             supprimés définitivement.
           </DialogDescription>
         </DialogHeader>

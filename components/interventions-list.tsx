@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CauseBadge } from "@/components/cause-badge";
-import { isEnRetard, type Intervention } from "@/lib/types";
+import { isEnRetard, nomDeSession, type Intervention } from "@/lib/types";
 
 export type InterventionStats = Record<
   string,
@@ -34,7 +34,7 @@ function formatCost(cost: number) {
   }).format(cost);
 }
 
-/** « 14 – 17 mars » : la plage réellement couverte par les actions du chantier. */
+/** « 14 – 17 mars » : la plage réellement couverte par les actions de la session. */
 function formatRange(first: string | null, last: string | null) {
   if (!first) return "—";
   if (!last || first === last) return formatDate(first);
@@ -81,7 +81,7 @@ function InterventionRow({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-2 font-medium">
-              <span className="truncate">{intervention.title}</span>
+              <span className="truncate">{nomDeSession(intervention)}</span>
               {isOpen && <Badge variant="info">En cours</Badge>}
               {enRetard && <Badge variant="alert">En retard</Badge>}
             </p>
@@ -104,7 +104,7 @@ function InterventionRow({
 }
 
 /**
- * Rappel de clôture d'un chantier resté sans activité. Il ne ferme rien et ne
+ * Rappel de clôture d'une session restée sans activité. Il ne ferme rien et ne
  * se rejette pas : ajouter une action le fait disparaître de lui-même, puisqu'il
  * se fonde sur la date de dernière activité.
  */
@@ -122,7 +122,7 @@ function StaleReminder({
   return (
     <div className="mb-2 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/40 p-3 text-sm">
       <p className="text-muted-foreground">
-        Ce chantier est ouvert depuis{" "}
+        Cette session est ouverte depuis{" "}
         <span className="font-medium text-foreground">{days} jours</span>
         {lastActivity
           ? `, dernière action le ${formatDate(lastActivity)}`
@@ -138,11 +138,11 @@ function StaleReminder({
           startTransition(async () => {
             const { error } = await onClose();
             if (error) toast.error(error);
-            else toast.success("Chantier clôturé.");
+            else toast.success("Session clôturée.");
           })
         }
       >
-        {isPending ? "Clôture…" : "Le clôturer"}
+        {isPending ? "Clôture…" : "La clôturer"}
       </Button>
     </div>
   );
@@ -164,7 +164,7 @@ export function InterventionsList({
   terminees: Intervention[];
   stats: InterventionStats;
   ranges: Record<string, { first: string | null; last: string | null }>;
-  /** Renseigné quand le chantier ouvert dort depuis plus d'un mois. */
+  /** Renseigné quand la session ouverte dort depuis plus d'un mois. */
   staleReminder?: { days: number; lastActivity: string | null } | null;
   onCloseStale?: () => Promise<{ error: string | null }>;
 }) {
@@ -182,16 +182,16 @@ export function InterventionsList({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-lg">Interventions</CardTitle>
+        <CardTitle className="text-lg">Sessions d&apos;atelier</CardTitle>
         <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
-          Planifier une intervention
+          Planifier une session
         </Button>
       </CardHeader>
       <CardContent className="space-y-5">
         {total === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            Aucune intervention. Ajoute une action pour ouvrir ton premier
-            chantier, ou planifie une intervention à venir.
+            Aucune session d&apos;atelier. Planifie ta première session, ou
+            ouvres-en une en y consignant une action.
           </p>
         ) : (
           groups.map((group) => (
@@ -229,7 +229,7 @@ export function InterventionsList({
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Planifier une intervention</DialogTitle>
+            <DialogTitle>Planifier une session d&apos;atelier</DialogTitle>
           </DialogHeader>
           <InterventionForm
             action={createIntervention.bind(null, bikeId)}
