@@ -50,7 +50,7 @@ const chantier = "[TEST] Révision de printemps";
 const autreChantier = "[TEST] Chantier de destination";
 
 test("US#4 – Créer un vélo de test (saisie)", async ({ page }) => {
-  await createBike(page, bikeName, { mileageKm: 4795 });
+  await createBike(page, bikeName);
 
   // La session que les scénarios suivants remplissent. Elle était créée par le
   // scénario de pré-remplissage du kilométrage, retiré par US#44.

@@ -52,7 +52,7 @@ const compteurRemplace = "[TEST] Session compteur remplacé";
 const champKm = "Kilométrage du vélo au compteur";
 
 test("US#4 – Créer un vélo de test (kilométrage)", async ({ page }) => {
-  await createBike(page, bikeName, { mileageKm: 4000 });
+  await createBike(page, bikeName);
 });
 
 test("US#44 – Démarrer un chantier sans connaître son kilométrage", async ({
@@ -91,11 +91,11 @@ test("US#44 – Compléter le relevé après coup", async ({ page }) => {
 
   await page.getByRole("button", { name: "Relever" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(champKm).fill("4200");
+  await dialog.getByLabel(champKm).fill("4000");
   await dialog.getByRole("button", { name: "Enregistrer" }).click();
   await expect(dialog).toBeHidden({ timeout: 15000 });
 
-  await expect(page.getByText(/4\s?200 km au compteur/)).toBeVisible();
+  await expect(page.getByText(/4\s?000 km au compteur/)).toBeVisible();
   await expect(page.getByText("Kilométrage non relevé")).toBeHidden();
 
   // Une action y reste enregistrable, et sa ligne ne porte aucun kilométrage.
@@ -126,7 +126,7 @@ test("US#44 – Démarrer un chantier demande le compteur du vélo", async ({
   // quand il vivait au milieu des questions portant sur la pièce.
   const champ = dialog.getByLabel(champKm);
   await expect(champ).toBeVisible();
-  await expect(champ).toHaveValue("4200");
+  await expect(champ).toHaveValue("4000");
 
   await champ.fill("5400");
   await dialog.getByRole("button", { name: "Démarrer" }).click();

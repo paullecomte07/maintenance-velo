@@ -63,7 +63,7 @@ const chantier = "[TEST] Révision de printemps";
 const chantierVide = "[TEST] Chantier jamais commencé";
 
 test("US#4 – Créer un vélo de test (épurée)", async ({ page }) => {
-  await createBike(page, bikeName, { mileageKm: 4795 });
+  await createBike(page, bikeName);
 });
 
 test("US#34 – La fiche vélo ne propose plus d'ajouter une action", async ({

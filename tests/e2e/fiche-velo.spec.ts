@@ -66,7 +66,7 @@ async function chantierTermine(page: Page, titre: string) {
 }
 
 test("US#4 – Créer un vélo de test (fiche)", async ({ page }) => {
-  await createBike(page, bikeName, { mileageKm: 4795 });
+  await createBike(page, bikeName);
 });
 
 test("US#25 – Les trois groupes d'interventions sont visibles ensemble", async ({
