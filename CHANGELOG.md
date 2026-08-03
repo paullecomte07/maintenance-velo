@@ -1,3 +1,5 @@
+## [0.11.0](https://github.com/paullecomte07/maintenance-velo/compare/v0.10.0...v0.11.0) (2026-08-03)
+
 ## [0.10.0](https://github.com/paullecomte07/maintenance-velo/compare/v0.9.0...v0.10.0) (2026-08-03)
 
 ## [0.9.0](https://github.com/paullecomte07/maintenance-velo/compare/v0.8.0...v0.9.0) (2026-08-03)
