@@ -8,19 +8,14 @@ export function testBikeName(suffix: string) {
   return `[TEST] ${suffix} ${Date.now()}`;
 }
 
-export async function createBike(
-  page: Page,
-  name: string,
-  { mileageKm }: { mileageKm?: number } = {}
-) {
+export async function createBike(page: Page, name: string) {
   await page.goto("/bikes");
   await page.getByRole("link", { name: "Ajouter un vélo" }).click();
 
+  // La création ne demande plus ni décote ni kilométrage : le taux vient de la
+  // catégorie, le relevé se prend à chaque session d'atelier.
   await page.getByLabel("Nom *").fill(name);
   await page.getByLabel("Prix d'achat (€) *").fill("100");
-  if (mileageKm !== undefined) {
-    await page.getByLabel(/Kilométrage/).fill(String(mileageKm));
-  }
   await page.getByRole("button", { name: "Ajouter le vélo" }).click();
 
   await expect(page).toHaveURL(/\/bikes$/, { timeout: 15000 });

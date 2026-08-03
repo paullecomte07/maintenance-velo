@@ -60,7 +60,7 @@ const ACTION_GROUP = "Qu'est-ce que tu as fait ?";
 const ETAT_GROUP = "Dans quel état tu l'as trouvée ?";
 
 test("US#4 – Créer un vélo de test (action)", async ({ page }) => {
-  await createBike(page, bikeName, { mileageKm: 4795 });
+  await createBike(page, bikeName);
 });
 
 test("US#30 – On ajoute une action, plus une pièce", async ({ page }) => {

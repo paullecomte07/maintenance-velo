@@ -113,7 +113,7 @@ async function contrastesInsuffisants(page: Page) {
 }
 
 test("US#4 – Créer un vélo de test (identité)", async ({ page }) => {
-  await createBike(page, bikeName, { mileageKm: 4795 });
+  await createBike(page, bikeName);
 });
 
 test("US#28 – La police du projet est réellement appliquée", async ({

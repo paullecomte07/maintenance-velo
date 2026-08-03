@@ -52,6 +52,12 @@ export function BikeForm({
   );
   const [rateTouched, setRateTouched] = useState(Boolean(bike));
 
+  // La création ne demande ni décote ni kilométrage : l'une suppose une notion
+  // financière qu'on n'a pas, l'autre un compteur qu'on n'a pas sous les yeux.
+  // Le taux par défaut de la catégorie s'applique côté serveur, le kilométrage
+  // se relève à chaque session d'atelier.
+  const modification = Boolean(bike);
+
   useEffect(() => {
     if (state.success) {
       toast.success(bike ? "Vélo modifié." : "Vélo ajouté.");
@@ -121,25 +127,27 @@ export function BikeForm({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="depreciation_rate">
-            Dépréciation annuelle (%) *
-          </Label>
-          <Input
-            id="depreciation_rate"
-            name="depreciation_rate"
-            type="number"
-            min="0"
-            max="100"
-            step="0.5"
-            required
-            value={rate}
-            onChange={(e) => {
-              setRate(e.target.value);
-              setRateTouched(true);
-            }}
-          />
-        </div>
+        {modification && (
+          <div className="space-y-2">
+            <Label htmlFor="depreciation_rate">
+              Dépréciation annuelle (%) *
+            </Label>
+            <Input
+              id="depreciation_rate"
+              name="depreciation_rate"
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              required
+              value={rate}
+              onChange={(e) => {
+                setRate(e.target.value);
+                setRateTouched(true);
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -166,17 +174,54 @@ export function BikeForm({
         </div>
       </div>
 
+      {/* Les deux seules données d'identité qui ne se retrouvent nulle part si
+          on ne les note pas : une marque se relit sur le cadre, un numéro gravé
+          devient inaccessible dès que le vélo a disparu. */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="mileage_km">Kilométrage (km)</Label>
+          <Label htmlFor="serial_number">Numéro de série</Label>
           <Input
-            id="mileage_km"
-            name="mileage_km"
-            type="number"
-            min="0"
-            defaultValue={bike?.mileage_km ?? ""}
+            id="serial_number"
+            name="serial_number"
+            defaultValue={bike?.serial_number ?? ""}
+            placeholder="Ex : WTU123K4567"
           />
+          <p className="text-xs text-muted-foreground">
+            Gravé sur le cadre, le plus souvent sous le boîtier de pédalier.
+          </p>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="identification_number">
+            Numéro d&apos;identification (Bicycode)
+          </Label>
+          <Input
+            id="identification_number"
+            name="identification_number"
+            defaultValue={bike?.identification_number ?? ""}
+            placeholder="Ex : FR1234567890"
+          />
+          <p className="text-xs text-muted-foreground">
+            Marquage antivol, sur un autocollant collé au cadre.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {modification && (
+          <div className="space-y-2">
+            <Label htmlFor="mileage_km">Dernier relevé connu (km)</Label>
+            <Input
+              id="mileage_km"
+              name="mileage_km"
+              type="number"
+              min="0"
+              defaultValue={bike?.mileage_km ?? ""}
+            />
+            <p className="text-xs text-muted-foreground">
+              Mis à jour tout seul à chaque session d&apos;atelier.
+            </p>
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="spec_sheet_url">Lien fiche technique</Label>
           <Input

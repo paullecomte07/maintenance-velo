@@ -16,7 +16,12 @@ export type Bike = {
   category: BikeCategory;
   purchase_date: string | null;
   purchase_price: number;
+  /** Dernier relevé connu, entretenu par les sessions d'atelier. */
   mileage_km: number | null;
+  /** Gravé sur le cadre par le constructeur. Ce qu'on demande en cas de vol. */
+  serial_number: string | null;
+  /** Marquage Bicycode / APIC, obligatoire à la vente en France depuis 2021. */
+  identification_number: string | null;
   spec_sheet_url: string | null;
   depreciation_rate: number;
   photo_url: string | null;
